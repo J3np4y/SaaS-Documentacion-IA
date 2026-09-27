@@ -5,7 +5,7 @@ Aplicación para que equipos organicen documentación interna y, en hitos poster
 ## Estado del proyecto
 
 - **Hito 1 completado:** repositorio, API FastAPI con `/health`, PostgreSQL local con Docker Compose y documentación base.
-- **Hito 2 implementado:** interfaz Next.js y TypeScript, pantalla inicial con estado de la API, pruebas y CI configurada. Las comprobaciones locales pasan; la ejecución de GitHub Actions todavía debe confirmarse.
+- **Hito 2 completado:** interfaz Next.js y TypeScript, pantalla inicial con estado de la API, pruebas y CI configurada. Las comprobaciones locales pasan; la ejecución de GitHub Actions todavía debe confirmarse.
 
 El alcance está en [docs/hito-02.md](docs/hito-02.md), la [hoja de ruta](docs/roadmap.md) y el [registro de pruebas](docs/testing.md).
 
