@@ -1,18 +1,32 @@
 # Hoja de ruta
 
-## Hito 1 — base ejecutable y documentada
+## Hito 1 — base ejecutable y documentada: completado
 
-- Repositorio y estructura con responsabilidades separadas.
-- API mínima con endpoint de salud y prueba automatizada.
-- PostgreSQL local con Docker Compose y credenciales configurables.
+- Repositorio independiente y estructura con responsabilidades separadas.
+- API FastAPI mínima con endpoint `/health` y prueba automatizada.
+- PostgreSQL local definido con Docker Compose y credenciales configurables.
 - README, arquitectura, decisión técnica y guía para asistentes.
+- Arranque local de la API y respuesta correcta del endpoint de salud confirmados.
 
-## Siguientes pasos
+## Hito 2 — interfaz web y conexión inicial con la API: validación final pendiente
 
-2. Verificar arranque reproducible de PostgreSQL y API; ejecutar prueba y Ruff.
-3. Añadir scaffold Next.js/TypeScript y pantalla inicial.
-4. Modelar dominio y migraciones.
-5. Autenticación, organizaciones, roles y permisos.
-6. Subida, validación, listado y eliminación de documentos.
-7. Ingesta, extracción, búsqueda textual y RAG con pgvector y citas.
-8. Evaluación, observabilidad, control de coste y despliegue.
+- [x] Scaffold Next.js con TypeScript y App Router en `frontend/`.
+- [x] Pantalla inicial adaptable y accesible.
+- [x] Consulta server-side de `/health` y presentación del estado de API.
+- [x] Pruebas unitarias iniciales y guía de buenas prácticas.
+- [x] Instrucciones de instalación y arranque.
+- [x] CI con lint, tipos, pruebas y compilación de frontend.
+- [x] Generar `package-lock.json` y usarlo en instalaciones reproducibles.
+- [x] Ejecutar localmente pruebas, lint, tipos y build.
+- [ ] Confirmar el resultado de GitHub Actions.
+
+Ver el alcance en [hito-02.md](hito-02.md) y el registro de comprobaciones en [testing.md](testing.md).
+
+## Hitos posteriores
+
+3. Modelo de dominio, conexión API-PostgreSQL y migraciones.
+4. Autenticación, organizaciones, roles y permisos.
+5. Subida, validación, listado y eliminación de documentos.
+6. Ingesta, extracción y búsqueda textual.
+7. RAG con pgvector, citas y evaluación.
+8. Observabilidad, control de coste y despliegue.
