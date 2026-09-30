@@ -3,9 +3,16 @@ app/__init__.py
 app/main.py
 app/api/__init__.py
 app/api/health.py
+app/core/__init__.py
+app/core/database.py
+app/core/settings.py
+app/models/__init__.py
+app/models/document.py
+app/models/organization.py
 docs_assistant_api.egg-info/PKG-INFO
 docs_assistant_api.egg-info/SOURCES.txt
 docs_assistant_api.egg-info/dependency_links.txt
 docs_assistant_api.egg-info/requires.txt
 docs_assistant_api.egg-info/top_level.txt
+tests/test_database_integration.py
 tests/test_health.py

@@ -7,7 +7,14 @@ name = "docs-assistant-api"
 version = "0.1.0"
 description = "API para plataforma de documentación empresarial asistida por IA"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.115,<1.0", "uvicorn[standard]>=0.30,<1.0"]
+dependencies = [
+    "alembic>=1.14,<2.0",
+    "fastapi>=0.115,<1.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "python-dotenv>=1.0,<2.0",
+    "sqlalchemy>=2.0,<3.0",
+    "uvicorn[standard]>=0.30,<1.0",
+]
 
 [project.optional-dependencies]
 dev = ["httpx>=0.27,<1.0", "pytest>=8,<9", "ruff>=0.6,<1.0"]

@@ -2,42 +2,38 @@
 
 ## Enfoque
 
-- Escribir una prueba junto a cada comportamiento nuevo relevante.
-- Probar resultados observables, límites y fallos; no acoplar pruebas a detalles internos sin necesidad.
-- Mantener datos ficticios y no usar documentos reales ni secretos.
-- La CI ejecuta las comprobaciones automáticas en cada push y pull request.
-- No declarar una comprobación como aprobada hasta haber ejecutado el comando y conservar su resultado.
+- Escribir pruebas junto a cada comportamiento nuevo relevante.
+- Probar resultados observables, límites y fallos previsibles.
+- Mantener datos ficticios; no usar documentos reales ni secretos.
+- No declarar una comprobación aprobada hasta ejecutarla o recibir un resultado verificable.
 
-## Hito 2 — frontend
+## Hito 2 — frontend: completado
 
-### Pruebas unitarias automatizadas
+### Pruebas automatizadas
 
-`frontend/src/__tests__/api-health.test.ts` cubre:
+`frontend/src/__tests__/api-health.test.ts` cubre respuesta válida, respuesta HTTP fallida, payload inesperado, esquema URL no permitido, credenciales embebidas y fallo de red.
 
-1. La API devuelve el payload esperado y el chequeo apunta a `/health` sin caché.
-2. Una respuesta HTTP no satisfactoria produce estado no disponible.
-3. Un payload inesperado produce estado no disponible.
-4. Una URL con esquema `file:` se rechaza antes de hacer una petición.
-5. Una URL con credenciales embebidas se rechaza antes de hacer una petición.
-6. Un fallo de red se transforma en un estado seguro y genérico.
+`frontend/src/__tests__/api-status.test.tsx` comprueba los textos accesibles de estado y el atributo `aria-live`. `frontend/src/test/setup.ts` limpia el DOM después de cada prueba para mantenerlas aisladas.
 
-`frontend/src/__tests__/api-status.test.tsx` verifica los mensajes accesibles para los estados disponible y no disponible. `frontend/src/test/setup.ts` limpia el DOM después de cada test para mantenerlos aislados.
+### Comprobaciones y resultado
 
-### Comprobaciones de proyecto
-
-- `npm.cmd test`: Vitest.
-- `npm.cmd run lint`: ESLint.
-- `npm.cmd run typecheck`: TypeScript estricto.
-- `npm.cmd run build`: compilación de producción de Next.js.
-
-### Estado de ejecución — 2026-09-27
-
-Entorno: Node.js `v24.21.0`, npm `12.1.0`; `npm ls --depth=0` confirmó las dependencias instaladas.
-
+- `npm.cmd test`: aprobado según confirmación del usuario después de configurar la limpieza del DOM.
 - `npm.cmd run lint`: aprobado.
 - `npm.cmd run typecheck`: aprobado.
-- `npm.cmd run build`: aprobado según la salida local compartida. Next.js compiló `/` como ruta dinámica y `/_not-found` como estática.
-- `npm.cmd test`: aprobado según la confirmación del usuario después de añadir limpieza del DOM entre tests con `afterEach(cleanup)`.
-- `git diff --check`: aprobado.
+- `npm.cmd run build`: aprobado; `/` se renderiza bajo demanda y `/_not-found` se prerenderiza.
+- GitHub Actions para backend y frontend: el usuario confirmó que la ejecución está en verde.
 
-La CI contiene los mismos checks de frontend y backend. Su ejecución en GitHub Actions queda pendiente de confirmar.
+Entorno local confirmado: Node.js `v24.21.0`, npm `12.1.0`. El lockfile está versionado para instalaciones reproducibles.
+
+## Hito 3 — persistencia: completado localmente; CI pendiente
+
+### Resultados confirmados por el usuario
+
+- PostgreSQL `db` y `db-test` arrancan correctamente; Alembic aplicó la migración.
+- `GET /health` devolvió `{"status":"ok"}` y `GET /ready` indicó que PostgreSQL estaba disponible.
+- `backend`: `pytest` aprobó las 6 pruebas (incluidas 3 de integración), con una advertencia deprecada de Starlette/httpx; `ruff check .` aprobó.
+- `frontend`: el usuario confirmó que `npm.cmd test`, `npm.cmd run lint`, `npm.cmd run typecheck` y `npm.cmd run build` terminaron correctamente.
+- El usuario confirmó que la aplicación web arranca y muestra la API disponible.
+- GitHub Actions para estos cambios todavía no está confirmado.
+
+Las pruebas de integración usan únicamente `TEST_DATABASE_URL`, que debe apuntar a la base desechable `docs_assistant_test`: el fixture elimina y recrea su esquema `public`.

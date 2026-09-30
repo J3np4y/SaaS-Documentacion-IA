@@ -5,54 +5,63 @@ Aplicación para que equipos organicen documentación interna y, en hitos poster
 ## Estado del proyecto
 
 - **Hito 1 completado:** repositorio, API FastAPI con `/health`, PostgreSQL local con Docker Compose y documentación base.
-- **Hito 2 implementado:** interfaz Next.js y TypeScript, pantalla inicial con estado de la API, pruebas y CI configurada. Las comprobaciones locales pasan; la ejecución de GitHub Actions todavía debe confirmarse.
+- **Hito 2 completado:** interfaz Next.js/TypeScript, pantalla inicial con estado de API, pruebas, comprobaciones locales aprobadas y GitHub Actions en verde (confirmado por el usuario).
+- **Hito 3 completado localmente:** conexión PostgreSQL, migraciones y modelos iniciales verificados. La CI de estos cambios queda pendiente. Detalles en [docs/hito-03.md](docs/hito-03.md).
 
-El alcance está en [docs/hito-02.md](docs/hito-02.md), la [hoja de ruta](docs/roadmap.md) y el [registro de pruebas](docs/testing.md).
+Consulta la [hoja de ruta](docs/roadmap.md), [arquitectura](docs/architecture.md) y el [registro de pruebas](docs/testing.md).
 
 ## Stack
 
 - Frontend: Next.js App Router, TypeScript y React.
 - Backend: Python 3.12+ y FastAPI.
-- Base de datos: PostgreSQL 16 mediante Docker Compose; pgvector se añadirá en el hito RAG.
+- Persistencia: PostgreSQL 16 mediante Docker Compose, SQLAlchemy 2 y Alembic.
 - Calidad: pytest y Ruff para backend; Vitest, ESLint, TypeScript y build para frontend.
 
-## Arranque local
+## Probar lo desarrollado
 
-### 1. PostgreSQL
+Abre tres terminales PowerShell desde la raíz del proyecto.
 
-Si aún no tienes `.env`, copia `.env.example` y configura una contraseña local. Desde la raíz del proyecto:
+### 1. Iniciar PostgreSQL
+
+Si todavía no existe `.env`, copia `.env.example` y configura una contraseña local. Desde la raíz:
 
 ```powershell
+Copy-Item .env.example .env  # solo la primera vez; configura la contraseña local
 docker compose up -d db
 docker compose ps
 ```
 
-### 2. API
+Espera a que `db` aparezca como `healthy`.
 
-En una terminal, desde `backend/`, crea el entorno e instala dependencias la primera vez:
+### 2. Iniciar la API
+
+En la primera terminal, entra en `backend/`. La primera vez crea e instala el entorno:
 
 ```powershell
+cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-python -m uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-La API queda en `http://localhost:8000`; salud: `http://localhost:8000/health`; OpenAPI: `http://localhost:8000/docs`.
+Comprueba `http://localhost:8000/health`; debe devolver `{"status":"ok"}`. La documentación interactiva está en `http://localhost:8000/docs`.
 
-### 3. Frontend
+### 3. Iniciar la web
 
-En otra terminal, desde `frontend/`, copia `.env.example` a `.env.local` la primera vez e inicia la aplicación:
+En la segunda terminal, desde la raíz del proyecto:
 
 ```powershell
+cd frontend
 Copy-Item .env.example .env.local
 npm.cmd ci
 npm.cmd run dev
 ```
 
-Abre `http://localhost:3000`. El frontend consulta `/health` desde el servidor Next.js. Consulta [frontend/README.md](frontend/README.md) para requisitos de Node, configuración y solución de problemas en PowerShell.
+`Copy-Item` se necesita solo la primera vez. Abre `http://localhost:3000`; el estado de la API debe mostrarse disponible. Para comprobar el estado de error, detén la API con `Ctrl+C` y recarga la página; debe seguir cargando y mostrar que la API no está disponible. Después vuelve a iniciar la API.
 
-## Pruebas y calidad
+Para parar PostgreSQL al terminar, desde la raíz ejecuta `docker compose down`. Los comandos de Node y npm y otros detalles están en [frontend/README.md](frontend/README.md).
+
+## Ejecutar las comprobaciones
 
 Desde `frontend/`:
 
@@ -63,7 +72,40 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Desde `backend/`, ejecuta `pytest` y `ruff check .`. La [CI](.github/workflows/backend.yml) ejecuta los checks de backend y frontend en pushes y pull requests.
+Desde `backend/`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check .
+```
+
+La [CI](.github/workflows/backend.yml) ejecuta los checks del backend y frontend en pushes y pull requests.
+
+## Hito 3: migraciones y persistencia
+
+Una vez creado `.env`, el backend deriva `DATABASE_URL` y `TEST_DATABASE_URL` de `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD`. Las variables explícitas del entorno pueden sobrescribir esas URL. Inicia ambas bases locales (desarrollo y pruebas):
+
+```powershell
+docker compose up -d db db-test
+docker compose ps
+```
+
+Desde `backend/`, aplica las migraciones a la base de desarrollo y arranca la API:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+`GET /health` comprueba que la API está viva. `GET /ready` ejecuta una consulta sencilla a PostgreSQL y devuelve 503 si no está disponible. La documentación de la API está en `http://localhost:8000/docs`.
+
+Para probar migraciones e integridad referencial, usa exclusivamente `TEST_DATABASE_URL` (por defecto, servicio `db-test` en el puerto 5433). **Las pruebas de integración borran y recrean el esquema `public` de esa base. Nunca apuntes `TEST_DATABASE_URL` a datos que quieras conservar.** Desde `backend/`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Las pruebas unitarias de endpoints no requieren PostgreSQL; las pruebas de integración se saltan si `TEST_DATABASE_URL` no está configurada. CI las ejecuta con un PostgreSQL temporal.
 
 ## Estructura
 
