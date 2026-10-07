@@ -61,3 +61,18 @@ Las pruebas de integración continúan usando solo `TEST_DATABASE_URL` apuntada 
 - `npm ci` informó 9 avisos de vulnerabilidad (1 moderado, 6 altos y 2 críticos) en el árbol de dependencias instalado; no se actualizaron dependencias frontend fuera del alcance del Hito 4.
 
 La verificación local del hito está completa; no se ha ejecutado una CI de GitHub para estos cambios. La falta de rate limiting distribuido, verificación de correo y recuperación de contraseña debe permanecer visible como limitación: el hito no implica que el login esté listo para producción.
+## Hito 5 — carga y gestión de documentos: pruebas previstas
+
+El plan de alcance y aprendizaje está en [hito-05.md](hito-05.md). No se ha implementado ni ejecutado todavía comportamiento de subida.
+
+Cuando se aprueben las decisiones de formatos y límites, almacenamiento, permisos y borrado, cubrir:
+
+- Rechazo de archivo vacío, demasiado grande, extensión/tipo no permitido, contenido que no corresponde con el tipo declarado y nombre malformado; aceptación de cada formato permitido.
+- Tratamiento seguro de nombres Unicode, separadores, rutas relativas, nombres duplicados y caracteres de control; las claves físicas deben generarse en servidor.
+- Persistencia de metadatos y bytes, estado ante error de almacenamiento o escritura de base de datos, y borrado sin dejar contenido huérfano (o documentar explícitamente la recuperación/compensación).
+- Propietario y miembro según la matriz de permisos acordada; denegar lectura, descarga, modificación y borrado entre organizaciones, incluso alterando UUID o nombre de objeto.
+- Descarga autenticada y privada, encabezados seguros, errores que no revelan ruta física/URL interna y ausencia de bytes, datos personales o secretos en logs.
+- Pruebas de UI para carga, progreso si se implementa, éxito, validación, error recuperable, lista vacía y acciones no autorizadas.
+- Prueba real contra el backend de almacenamiento elegido además de dobles para fallos; mantener PostgreSQL aislado para metadatos e integridad.
+
+No se reportarán resultados para estos casos hasta implementar las pruebas y ejecutarlas. Antimalware, cuotas y límites de tasa necesitan decisión explícita o una limitación visible antes de exponer la subida fuera de un entorno local de aprendizaje.

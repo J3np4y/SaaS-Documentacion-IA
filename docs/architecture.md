@@ -1,8 +1,8 @@
 # Arquitectura
 
-## Estado actual — Hito 3 completado y confirmado por CI
+## Estado actual — persistencia y acceso básico
 
-FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema inicial. Next.js sirve la página inicial y consulta la API desde el servidor con `API_BASE_URL`.
+FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para autenticación. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos iniciales de documentos.
 
 ```text
 Navegador -> Next.js (página renderizada en servidor) -> FastAPI /health
@@ -23,7 +23,7 @@ Alembic -> migraciones versionadas de esquema
 
 FastAPI conserva `/health` como comprobación de vida independiente de la base de datos y expone `/ready` como comprobación de preparación que verifica una conexión real a PostgreSQL. Si la base de datos no está disponible, `/ready` responderá con estado no disponible sin revelar detalles de conexión.
 
-El primer esquema persistente cubrirá `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardarán en PostgreSQL. Los endpoints de CRUD, autenticación y permisos quedan para hitos posteriores.
+El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. La gestión y subida de documentos se planifican para el Hito 5.
 
 ## Acceso y permisos (Hito 4)
 
@@ -38,6 +38,18 @@ Navegador -> Next.js (formularios y rutas proxy same-origin)
 Registro con email/contraseña crea una organización y a su primer usuario como `owner`; con una invitación válida crea una cuenta `member` en la organización destino. Cada cuenta pertenece a una organización en esta fase. La API deriva el usuario, el rol y el tenant de la sesión; nunca concede permisos a partir de un rol u organización enviados por el cliente. El propietario administra invitaciones y membresías; el backend conserva siempre al menos un propietario.
 
 Las rutas proxy de Next.js reenvían cookies al backend sin exponerlas a JavaScript. La sesión vive en PostgreSQL para revocarla; el navegador solo conserva un identificador aleatorio `HttpOnly`, `SameSite=Lax`, con vencimiento y `Secure` en despliegues HTTPS. El backend valida el encabezado `Origin` en operaciones que cambian estado. Las invitaciones se comparten manualmente y no verifican la dirección de correo.
+
+## Gestión de documentos (Hito 5 planificado)
+
+```text
+Navegador -> Next.js -> FastAPI
+                         -> identidad y organización de la sesión
+                         -> validar tamaño, tipo y nombre del archivo
+                         -> PostgreSQL: metadatos y estado
+                         -> almacenamiento privado: bytes originales
+```
+
+El principio ya establecido es no guardar binarios en PostgreSQL. El backend asignará la organización desde la sesión, no desde campos confiados al navegador; las claves de almacenamiento serán generadas por el servidor y no derivadas de rutas/nombres proporcionados por el usuario. La ubicación de almacenamiento concreta, formatos, límites y política de acceso/retención siguen pendientes de acuerdo. No se expondrán enlaces públicos por defecto. El plan y sus decisiones abiertas están en [hito-05.md](hito-05.md) y [ADR 0004](adr/0004-document-storage.md).
 
 ## Dirección objetivo
 
@@ -57,7 +69,9 @@ Navegador -> Next.js / TypeScript -> FastAPI
 - El backend es la autoridad para autenticar usuarios, comprobar roles y aislar datos por organización.
 - Contraseñas y secretos de sesión/invitación se almacenan como hashes; los tokens no se registran ni se devuelven después de su emisión.
 - Los binarios no se guardarán en tablas de negocio.
+- Los archivos cargados se tratarán como datos no confiables: validar límites y contenido antes de aceptar, no confiar en nombre/extensión/MIME declarados, y nunca ejecutar ni interpretar archivos como instrucciones.
+- El almacenamiento de documentos será privado y aislado por organización; acceso y borrado deberán autorizarse en el servidor.
 - Secretos y URL de base de datos solo se leerán del entorno; no se registrarán en logs.
 - Las consultas usarán parámetros/ORM, y los metadatos se validarán antes de persistir.
-- No se integra proveedor LLM ni almacenamiento de documentos en el Hito 3.
+- No se integra proveedor LLM; extracción, indexación y RAG quedan fuera del Hito 5.
 - Hito 4 no incorpora correo, verificación de email, recuperación de contraseña, MFA ni rate limiting distribuido; no considerar el login abierto listo para producción.
