@@ -1,8 +1,8 @@
 # Hito 3 — persistencia inicial con PostgreSQL
 
-## Estado: completado localmente; CI pendiente
+## Estado: completado y confirmado por CI
 
-Las comprobaciones locales de backend, PostgreSQL y frontend han pasado. La ejecución de GitHub Actions para estos cambios queda pendiente.
+Las comprobaciones locales de backend, PostgreSQL y frontend pasaron según los resultados registrados en [testing.md](testing.md). GitHub Actions confirmó ambos jobs sobre `main` en la [ejecución 36760916434](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/36760916434), commit `c5ebb8b7e4ab57b5ecf4ba81eafef2e048ff9c7c`.
 
 ## Objetivo
 
@@ -36,7 +36,7 @@ Conectar FastAPI con PostgreSQL de forma reproducible y segura, y crear un prime
 - Se pueden crear organizaciones y asociar metadatos de documento; la clave foránea y restricciones se prueban.
 - Una base de datos de prueba aislada se usa localmente y en CI.
 - Pasan las pruebas backend, Ruff, las pruebas de integración, lint, tipos, pruebas frontend y build.
-- La CI debe ejecutar los mismos checks al publicar/integrar los cambios; los resultados locales quedan registrados en [testing.md](testing.md).
+- CI ejecuta los checks de backend y frontend con PostgreSQL temporal; ambos jobs pasaron en la ejecución indicada arriba.
 
 ## Seguridad y buenas prácticas
 
