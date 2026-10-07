@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthPanel } from "@/components/auth-panel";
 import { ApiStatus } from "@/components/api-status";
 import { checkApiHealth } from "@/lib/api-health";
 
@@ -32,6 +33,8 @@ export default async function HomePage() {
           <ApiStatus status={apiHealth} />
         </div>
       </section>
+
+      <AuthPanel />
 
       <section className="feature-grid" aria-label="Principios del producto">
         <article className="feature-card">

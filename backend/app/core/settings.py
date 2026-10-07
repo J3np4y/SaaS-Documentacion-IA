@@ -9,6 +9,13 @@ from sqlalchemy.engine import URL
 # The project-level .env is ignored by Git and is used for local development.
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000").rstrip("/")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
 
 def _postgres_url(database: str, port: int) -> str | None:
     """Build a safely escaped PostgreSQL URL from existing Compose settings."""
