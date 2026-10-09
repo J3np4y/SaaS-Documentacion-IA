@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Docs Assistant | Documentación empresarial",
-  description: "Una base segura para organizar y consultar el conocimiento de tu equipo.",
+  title: "Nexora | Conocimiento de equipo",
+  description: "Organiza el conocimiento de tu equipo y encuentra respuestas con sus fuentes.",
 };
 
 type RootLayoutProps = Readonly<{
@@ -14,7 +14,14 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{const saved=localStorage.getItem("nexora-theme");document.documentElement.dataset.theme=saved==="dark"||saved==="light"?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch{document.documentElement.dataset.theme="light"}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

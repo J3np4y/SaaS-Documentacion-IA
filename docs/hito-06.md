@@ -16,7 +16,7 @@ Entender que aceptar y guardar un archivo no significa que la aplicación pueda 
 4. **Buscar con aislamiento:** devolver resultados relevantes solo para la organización actual, sin confiar en identificadores enviados por el cliente.
 5. **Comprobar límites:** probar archivos sin texto, corruptos, grandes, con codificaciones distintas y búsquedas vacías o entre organizaciones.
 
-## Alcance propuesto
+## Alcance implementado
 
 - Extraer texto de PDF, DOCX y TXT ya admitidos por el Hito 5.
 - Conservar los bytes originales y hacer que el procesamiento pueda fallar sin perder el documento cargado.
@@ -24,6 +24,12 @@ Entender que aceptar y guardar un archivo no significa que la aplicación pueda 
 - Añadir búsqueda textual autenticada, restringida en el servidor a la organización de la sesión.
 - Mostrar en la interfaz el resultado de procesamiento y los resultados de búsqueda.
 - Registrar en pruebas qué sucede ante archivos vacíos, dañados, sin texto extraíble y ante errores de extracción o base de datos.
+
+## Cómo recorrer la implementación
+
+Sigue una carga desde `POST /organizations/me/documents`: el servidor valida y guarda primero los bytes originales, registra los metadatos y después intenta extraer texto. El estado de extracción permite distinguir un documento recibido de uno cuyo texto se puede buscar. Si el análisis falla, la carga no se convierte en un error silencioso ni se pierde el original; la persona puede descargarlo e intentar extraerlo otra vez.
+
+La búsqueda se solicita a `GET /organizations/me/documents/search?q=...`. El navegador no decide la organización que se consulta: el backend obtiene la membresía desde la sesión y filtra resultados en PostgreSQL. Al leer el código, localiza por separado el almacenamiento binario, el servicio de extracción, la consulta de búsqueda y el endpoint; cada capa tiene una responsabilidad distinta.
 
 ## Fuera de alcance
 
@@ -56,8 +62,16 @@ No se añadirá un trabajador en segundo plano en esta fase. La interfaz y la AP
 - [x] La UI presenta estados y errores comprensibles sin filtrar detalles internos.
 - [x] CI valida backend y frontend; `docs/testing.md` registra los resultados observados.
 
+## Comprobación y resultado
+
+La suite backend aprobó 61 pruebas contra PostgreSQL desechable. Incluye extracción PDF/DOCX/TXT, archivos vacíos y dañados, límites, reintento, conservación del original, aislamiento por organización y búsqueda textual española. Ruff aprobó y el ciclo de migraciones `upgrade head` → `downgrade base` → `upgrade head` se verificó en PostgreSQL.
+
+El frontend aprobó 22 pruebas, lint, comprobación de tipos y build de producción. GitHub Actions aprobó los jobs de backend y frontend en la [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). El detalle y las limitaciones de esta verificación están en [testing.md](testing.md).
+
 ## Referencias
 
 - [Hito 5 — carga y gestión](hito-05.md)
+- [ADR 0004 — almacenamiento de documentos](adr/0004-document-storage.md)
 - [Arquitectura](architecture.md)
 - [Hoja de ruta](roadmap.md)
+- [Resultados de las pruebas](testing.md)

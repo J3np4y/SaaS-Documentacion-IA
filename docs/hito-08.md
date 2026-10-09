@@ -48,35 +48,60 @@ Las elecciones de periodos, contabilidad atómica, límites, telemetría, conten
 
 Esta configuración es para una prueba local. No publica la aplicación en Internet ni la convierte en un servicio listo para producción.
 
-1. Desde la raíz, crea `.env` copiando `.env.example` y cambia `POSTGRES_PASSWORD` por una contraseña local. No guardes `.env` ni copias de seguridad en Git. Si quieres probar RAG con OpenAI, añade una clave propia a `OPENAI_API_KEY`; las pruebas descritas abajo no la necesitan.
-2. Inicia PostgreSQL y espera a que esté saludable:
+### Inicio rápido
+
+En Windows, con Docker Desktop iniciado, abre PowerShell en la raíz y ejecuta el [script de arranque](../iniciar.ps1):
+
+```powershell
+.\iniciar.ps1
+```
+
+La primera ejecución crea `.env` con una contraseña aleatoria local (también sustituye el valor de ejemplo si ya habías copiado `.env.example`), aplica las migraciones, construye las imágenes e inicia los servicios. El script usa el proyecto Compose `docs-assistant-local`, separado del stack de desarrollo definido en `docker-compose.yml`. Abre `http://localhost:3000` cuando indique que la aplicación está lista. Para detenerla sin borrar datos, ejecuta:
+
+```powershell
+docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml down
+```
+
+El script no configura `OPENAI_API_KEY` ni contacta OpenAI. Si quieres probar RAG, añade tu propia clave a `.env` y reinicia los servicios; las solicitudes pueden enviar documentos y preguntas al proveedor y generar costes. No guardes `.env` ni copias de seguridad en Git.
+
+### Pasos manuales
+
+Si necesitas entender o depurar cada fase, crea `.env` copiando `.env.example` y cambia `POSTGRES_PASSWORD` por una contraseña local:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Luego:
+
+1. Inicia PostgreSQL y espera a que esté saludable:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml up -d db
-   docker compose --env-file .env -f docker-compose.deploy.yml ps
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml up -d db
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml ps
    ```
 
-3. Aplica las migraciones explícitamente. La API no modifica el esquema al arrancar:
+2. Aplica las migraciones explícitamente. La API no modifica el esquema al arrancar:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml run --rm api alembic upgrade head
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml run --build --rm api alembic upgrade head
    ```
 
-4. Construye e inicia frontend y API:
+3. Construye e inicia frontend y API:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml up --build -d
-   docker compose --env-file .env -f docker-compose.deploy.yml ps
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml up --build -d
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml ps
    ```
 
    Solo el frontend se publica, ligado por defecto a `127.0.0.1:3000`. La API y PostgreSQL permanecen en la red privada de Compose. El frontend consulta la API por el nombre interno `api`; la API encuentra PostgreSQL como `db`.
 
-5. Abre `http://localhost:3000`. Para comprobar preparación y métricas desde la red interna:
+4. Abre `http://localhost:3000`. Para comprobar preparación y métricas desde la red interna:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml exec api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready').read().decode())"
-   docker compose --env-file .env -f docker-compose.deploy.yml exec api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/metrics').read().decode())"
-   docker compose --env-file .env -f docker-compose.deploy.yml logs --no-color api
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml exec api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready').read().decode())"
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml exec api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/metrics').read().decode())"
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml logs --no-color api
    ```
 
    `/metrics` no está publicado en el host. Los logs de aplicación son resúmenes JSON; no incluyen documentos, preguntas, cookies, identidad ni query strings. Las métricas viven en memoria y se reinician al reiniciar la API.
@@ -85,17 +110,17 @@ Esta configuración es para una prueba local. No publica la aplicación en Inter
 
 - Los límites iniciales son 20 operaciones RAG diarias y 200 mensuales por organización; configura `RAG_DAILY_OPERATION_LIMIT` y `RAG_MONTHLY_OPERATION_LIMIT` en `.env` si necesitas otros valores positivos. Son operaciones, no una cantidad de dinero.
 - PostgreSQL y los documentos usan volúmenes de Docker. Estos volúmenes sobreviven al reinicio de contenedores, pero **no son copias de seguridad**. Los documentos permanecen hasta que una persona autorizada los borra; los contadores de periodos antiguos se eliminan oportunistamente al reservar una cuota.
-- Una copia de seguridad de PostgreSQL puede generarse fuera del repositorio con:
+- Desde PowerShell en la raíz, una copia de seguridad de PostgreSQL puede generarse en la carpeta del usuario (fuera del repositorio) con:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$env:USERPROFILE\docs-assistant-backup.sql"
    ```
 
    Este volcado contiene datos de la aplicación. Guárdalo cifrado y con acceso restringido, define una retención adecuada a tus datos y elimina las copias cuando ya no se necesiten. Este hito no automatiza ni verifica la restauración. El volumen de documentos necesita además su propia copia coordinada y protegida; el volcado SQL no contiene los bytes originales.
 - Detén los servicios conservando los volúmenes:
 
    ```powershell
-   docker compose --env-file .env -f docker-compose.deploy.yml down
+   docker compose --project-name docs-assistant-local --env-file .env -f docker-compose.deploy.yml down
    ```
 
    No añadas `--volumes` si quieres conservar los datos.

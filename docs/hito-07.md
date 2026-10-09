@@ -18,6 +18,16 @@ Entender las partes de RAG (generación aumentada por recuperación): preparar f
 - Crear un pequeño conjunto de preguntas y respuestas esperadas para medir recuperación, citas y abstención.
 - Mantener OCR, agentes con herramientas, carga de documentos sensibles y despliegue público fuera del hito.
 
+## Recorrido recomendado
+
+1. Sigue un documento ya extraído desde el índice de fragmentos hasta su embedding. Cada fragmento conserva el documento de origen, la organización y la posición necesarias para verificar una cita.
+2. Observa la consulta de una pregunta: el servidor comprueba la sesión, crea el embedding de la pregunta y recupera primero solo fragmentos de la organización actual.
+3. Compara el contexto enviado al modelo con las fuentes devueltas. El texto documental se presenta como evidencia no confiable y no puede conceder permisos ni modificar las instrucciones del sistema.
+4. Sigue también los casos sin evidencia y las citas rechazadas. Una respuesta válida puede abstenerse; no debe convertir una coincidencia débil en una afirmación segura.
+5. Ejecuta la evaluación local para aprender qué comprueba una prueba determinista y qué no puede demostrar sobre la calidad de un modelo externo.
+
+La cuota de operaciones no se introdujo en este hito: se añadió después, en el [Hito 8](hito-08.md). De igual forma, los vectores sintéticos de la evaluación verifican el flujo de recuperación, pero no sustituyen llamadas o mediciones reales del proveedor.
+
 ## Decisiones acordadas
 
 - Proveedor: API de OpenAI para embeddings y respuestas. El contenido de documentos indexados, las preguntas y el contexto recuperado se enviarán a OpenAI; quien despliegue debe configurar una API key propia y considerar sus condiciones de privacidad y coste.
@@ -56,9 +66,16 @@ Resultado observado: 2 de 2 preguntas con evidencia recuperaron el documento y f
 - [x] Pruebas reproducibles cubren recuperación, citas, abstención, permisos y documentos adversariales.
 - [x] La evaluación registra resultados sintéticos observados y aclara que no son una garantía de producción.
 
+## Comprobación y resultado
+
+Backend: 71 pruebas aprobadas contra PostgreSQL con pgvector. Frontend: 25 pruebas, lint, typecheck y build aprobados. La evaluación sintética recuperó la fuente esperada en 2/2 consultas con evidencia, produjo la cita esperada en 2/2 casos y se abstuvo en 1/1 caso sin evidencia. La prueba adversarial confirma separación entre instrucciones de sistema y evidencia documental; no demuestra inmunidad general frente a prompt injection.
+
+Las migraciones, Ruff y la CI de backend/frontend también aprobaron. No se usó una clave de OpenAI ni se hicieron llamadas reales. Los resultados y la ejecución de GitHub Actions están en [testing.md](testing.md) y en la [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940).
+
 ## Referencias
 
 - [Hito 6 — extracción y búsqueda](hito-06.md)
+- [ADR 0005 — modelos y recuperación RAG](adr/0005-rag-models-and-retrieval.md)
 - [Arquitectura](architecture.md)
 - [Hoja de ruta](roadmap.md)
 - [Resultados de las pruebas](testing.md)

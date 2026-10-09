@@ -1,68 +1,65 @@
 # Hoja de ruta
 
-Esta página es el índice del progreso: resume qué está terminado y qué viene después. Para aprender los conceptos paso a paso, empieza por la [guía de aprendizaje](guia-aprendizaje.md) y abre el documento de cada hito. Los resultados detallados de comprobaciones se mantienen en [testing.md](testing.md).
+Esta página resume el recorrido y el estado de cada hito. Para aprender paso a paso, empieza por la [guía de aprendizaje](guia-aprendizaje.md); cada documento de hito explica los conceptos, las decisiones, los límites y cómo comprobarlos. Los resultados observados se registran en [testing.md](testing.md).
+
+## Estado general
+
+Los ocho hitos definidos hasta ahora están implementados. El Hito 8 cuenta con verificación local y CI aprobadas. El siguiente hito aún no tiene alcance acordado: antes de abrir trabajo nuevo, se revisarán las limitaciones pendientes y se decidirá su objetivo por separado. El prototipo no es un servicio listo para producción.
 
 ## Hito 1 — base ejecutable y documentada: completado
 
-- Repositorio independiente y estructura con responsabilidades separadas.
-- API FastAPI mínima con `/health` y prueba automatizada.
-- PostgreSQL local definido con Docker Compose y credenciales configurables.
-- README, arquitectura, decisión técnica y guía para asistentes.
-- Arranque local de la API y respuesta correcta del endpoint confirmados.
+- Repositorio y estructura inicial con separación de API, interfaz y documentación.
+- API FastAPI con comprobación de vida `/health`.
+- PostgreSQL local definido con Docker Compose y configuración por entorno.
+- README, arquitectura, decisiones iniciales y guía para asistentes.
 
 ## Hito 2 — interfaz web y conexión inicial con la API: completado
 
-- Next.js con TypeScript y App Router.
-- Página adaptable y accesible con indicador del estado de API consultado server-side.
-- Timeout, validación de URL, errores genéricos y pruebas automatizadas.
-- Lockfile, instalación reproducible, README y CI de backend y frontend.
-- Pruebas, lint, tipos y build locales aprobados; el usuario confirmó GitHub Actions en verde.
+- Next.js con TypeScript y App Router; página accesible y adaptable.
+- Estado de salud de la API consultado server-side con timeout y mensajes genéricos.
+- Lockfile, instalación reproducible y CI para backend y frontend.
 
 ## Hito 3 — persistencia inicial con PostgreSQL: completado; CI confirmada
 
-- Conectar FastAPI a PostgreSQL con SQLAlchemy 2 y configuración por entorno.
-- Añadir migraciones con Alembic.
-- Crear las entidades iniciales de organización y metadatos de documento.
-- Separar disponibilidad de la API (`/health`) y disponibilidad de base de datos (`/ready`).
-- Añadir pruebas de integración contra PostgreSQL y servicio PostgreSQL en CI.
-- CI confirmada sobre `main`; enlace y resultados detallados en [testing.md](testing.md).
-
-Alcance y criterios: [hito-03.md](hito-03.md). La selección técnica aceptada se registra en [ADR 0002](adr/0002-persistence.md).
+- SQLAlchemy y Alembic para datos y migraciones versionadas.
+- Entidades iniciales de organización y documentos.
+- `/health` separa la vida de la API de `/ready`, que comprueba PostgreSQL.
+- Referencias: [ADR 0002](adr/0002-persistence.md), [Hito 3](hito-03.md).
 
 ## Hito 4 — autenticación, usuarios y permisos: completado; verificación local aprobada
 
-- Email y contraseña, sesiones de servidor revocables y cookie segura.
-- Registro que crea organización y propietario; una organización por usuario.
-- Roles `owner`/`member`, invitaciones manuales de un solo uso y UI mínima.
-- Autorización en el backend probada por organización y rol.
-- Sin correo, verificación de email ni recuperación de contraseña en esta fase.
-- La verificación local y sus resultados están detallados en [testing.md](testing.md).
-
-El recorrido de aprendizaje está en [hito-04.md](hito-04.md); la decisión técnica, en [ADR 0003](adr/0003-authentication-and-access.md). El login no se considera listo para producción mientras falten los controles de abuso y recuperación indicados en el hito.
+- Registro, sesiones revocables, cookies y roles `owner`/`member`.
+- Invitaciones manuales de un uso y autorización por organización en el servidor.
+- Verificación y limitaciones de producción: [Hito 4](hito-04.md), [ADR 0003](adr/0003-authentication-and-access.md).
 
 ## Hito 5 — carga y gestión de documentos: completado; CI aprobada
 
-- Decisiones acordadas: PDF/DOCX/TXT, 10 MiB por archivo, almacenamiento local privado, permisos iguales para ambos roles, borrado físico y sin antimalware/cuotas totales por organización.
-- Carga, listado, descarga y borrado con permisos por organización.
-- Validación de tipos y límite de tamaño; bytes en almacenamiento local privado.
-- Extracción, indexación, búsqueda y respuestas de IA siguen fuera del alcance.
+- Carga, listado, descarga y borrado autorizado para PDF, DOCX y TXT de hasta 10 MiB.
+- Bytes en almacenamiento local privado y metadatos en PostgreSQL.
+- Política y límites: [Hito 5](hito-05.md), [ADR 0004](adr/0004-document-storage.md).
 
-El recorrido de aprendizaje y los criterios están en [hito-05.md](hito-05.md). Las decisiones y sus consecuencias están en el [ADR 0004](adr/0004-document-storage.md). Los resultados locales y de CI están en [testing.md](testing.md).
+## Hito 6 — extracción, ingesta y búsqueda textual: completado; CI aprobada
 
-## Hitos posteriores
-
-## Hito 6 — extracción de contenido, ingesta y búsqueda textual: completado; CI aprobada
-
-- Extraer texto de PDF, DOCX y TXT durante la carga; preservar el original si falla.
-- Guardar el texto y habilitar búsqueda PostgreSQL en español, aislada por organización.
-- Mantener fuera de alcance OCR, embeddings, RAG y respuestas generadas por IA.
-
-El recorrido, las decisiones y la comprobación local están en [hito-06.md](hito-06.md) y [testing.md](testing.md).
+- Extraer texto de PDF, DOCX y TXT, conservar el original y permitir reintentos.
+- Búsqueda de texto completo en español, filtrada por la organización autenticada.
+- OCR y respuestas generadas por IA quedaron fuera de este hito.
+- Recorrido: [Hito 6](hito-06.md).
 
 ## Hito 7 — RAG con pgvector, citas y evaluación: completado; CI aprobada
 
-La indexación, recuperación aislada por organización, respuestas con citas y abstención están implementadas. Las pruebas locales, CI y evaluación determinista están registradas en [testing.md](testing.md). Véase el [hito](hito-07.md) y [ADR 0005](adr/0005-rag-models-and-retrieval.md).
+- Indexación de fragmentos y embeddings; recuperación limitada a la organización actual.
+- Respuestas fundamentadas con citas y abstención cuando falta evidencia.
+- Evaluación determinista reproducible con datos sintéticos; no mide la calidad real de OpenAI.
+- Recorrido y decisiones: [Hito 7](hito-07.md), [ADR 0005](adr/0005-rag-models-and-retrieval.md).
 
-## Hito 8 — observabilidad, control de coste y contenedores: completado; CI aprobada
+## Hito 8 — cuotas, observabilidad privada y contenedores: completado; CI aprobada
 
-Cuotas RAG por organización, señales operativas que no exponen contenido y una ejecución reproducible en contenedores, sin publicar la aplicación. La verificación local está registrada en [testing.md](testing.md); alcance, guía y decisiones: [hito-08.md](hito-08.md) y [ADR 0006](adr/0006-observability-cost-control-and-containers.md).
+- Cuotas RAG por organización de 20 operaciones diarias y 200 mensuales por defecto, configurables por entorno.
+- Métricas Prometheus de baja cardinalidad y logs JSON sin contenido ni identidad.
+- Imágenes de frontend y API; Compose local con datos persistentes y exposición solo en loopback del frontend.
+- Ejecutor PowerShell en la raíz: [`iniciar.ps1`](../iniciar.ps1).
+- Instrucciones y limitaciones: [Hito 8](hito-08.md), [ADR 0006](adr/0006-observability-cost-control-and-containers.md).
+
+## Próxima decisión
+
+No se presupone un Hito 9. Antes de ampliarlo, revisar las limitaciones documentadas de autenticación, privacidad, backups y operación; acordar alcance y criterios de aceptación con quien mantiene el proyecto.

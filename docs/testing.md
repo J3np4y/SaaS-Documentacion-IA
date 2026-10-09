@@ -9,6 +9,12 @@ Este es el registro de referencia para los resultados observados. Los hitos pued
 - Mantener datos ficticios; no usar documentos reales ni secretos.
 - No declarar una comprobación aprobada hasta ejecutarla o recibir un resultado verificable.
 
+## Hito 1 — base ejecutable
+
+- La hoja de ruta registra una API FastAPI con `/health`, PostgreSQL de desarrollo en Compose y pruebas automatizadas del endpoint.
+- El historial disponible no conserva el número de pruebas ni una ejecución de CI independiente de ese hito; no se atribuyen resultados posteriores a su commit inicial.
+- Las primeras comprobaciones de CI con resultados detallados en este registro aparecen en el Hito 3.
+
 ## Hito 2 — frontend: completado
 
 ### Pruebas automatizadas
@@ -63,6 +69,7 @@ Las pruebas de integración continúan usando solo `TEST_DATABASE_URL` apuntada 
 - `npm ci` informó 9 avisos de vulnerabilidad (1 moderado, 6 altos y 2 críticos) en el árbol de dependencias instalado; no se actualizaron dependencias frontend fuera del alcance del Hito 4.
 
 La verificación local del hito está completa; no se ha ejecutado una CI de GitHub para estos cambios. La falta de rate limiting distribuido, verificación de correo y recuperación de contraseña debe permanecer visible como limitación: el hito no implica que el login esté listo para producción.
+
 ## Hito 5 — carga y gestión de documentos
 
 El alcance aprobado está en [hito-05.md](hito-05.md) y la decisión de almacenamiento en [ADR 0004](adr/0004-document-storage.md).
@@ -82,24 +89,25 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 
 ## Hito 6 — extracción, ingesta y búsqueda textual
 
-### Resultados locales observados
+### Alcance comprobado
 
-- `backend`: `pytest -q` aprobó 61 pruebas contra PostgreSQL desechable, incluyendo extracción de PDF/DOCX/TXT, límites, carga conservada tras fallo, reprocesamiento y búsqueda aislada por organización. Ruff aprobado.
-- Migración PostgreSQL verificada con `upgrade head` → `downgrade base` → `upgrade head`, incluyendo la columna generada y el índice GIN de búsqueda española.
+- `backend`: `pytest -q` aprobó 61 pruebas contra PostgreSQL desechable. Incluyen extracción PDF/DOCX/TXT, límites, conservación del archivo ante fallos, reintento y búsqueda aislada por organización.
+- Migración PostgreSQL verificada con `upgrade head` → `downgrade base` → `upgrade head`, incluida la columna generada y el índice GIN de búsqueda española.
 - `frontend`: 22 pruebas, lint, typecheck y build de producción aprobados.
-- La suite backend mantiene una advertencia Starlette/httpx deprecada; no afectó los resultados.
-- GitHub Actions aprobada en el commit `73d073af8974a085d03cd860bbfdb01e5bef9707`: [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). Los jobs de backend (Ruff y pytest con PostgreSQL) y frontend (lint, typecheck, tests y build) finalizaron correctamente.
+- Ruff aprobado. La suite emitió una advertencia deprecada de Starlette/httpx, sin fallos.
+- GitHub Actions aprobada para `73d073af8974a085d03cd860bbfdb01e5bef9707`: [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). Ambos jobs —backend con PostgreSQL y frontend— finalizaron correctamente.
 
 ## Hito 7 — RAG, citas y evaluación local
 
-- Backend: `pytest -q` aprobó 71 pruebas contra PostgreSQL desechable con pgvector. Se verificaron aislamiento por organización, indexación, persistencia ante fallos del proveedor, citas, abstención y validación de respuestas.
-- Evaluación determinista: 2/2 consultas recuperaron la fuente esperada y produjeron citas correctas; 1/1 consulta sin evidencia se abstuvo. Los vectores y respuestas son sintéticos; no miden la calidad de OpenAI.
-- Seguridad del prompt: una prueba confirma que el texto adversarial de un documento permanece en el mensaje de evidencia del usuario, separado de las instrucciones de sistema. Esto no demuestra inmunidad total a prompt injection.
-- Ruff aprobado.
-- Migraciones PostgreSQL/pgvector verificadas con `upgrade head` → `downgrade base` → `upgrade head`, incluida la extensión vectorial y el índice HNSW.
-- Frontend: 25 pruebas, lint, typecheck y build de producción aprobados.
-- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx deprecada continúa sin afectar la suite.
-- GitHub Actions aprobada para el commit `a2e43e1231217e02b40d23adb3ed58e0e04aaeaf`: [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940). Los jobs de backend (Ruff y pytest contra pgvector) y frontend (lint, typecheck, tests y build) terminaron correctamente.
+### Resultados locales y CI
+
+- `backend`: `pytest -q` aprobó 71 pruebas contra PostgreSQL desechable con pgvector. Se cubrieron aislamiento por organización, indexación, fallos del proveedor, citas, abstención y validación de respuestas.
+- Evaluación determinista: 2/2 consultas con evidencia recuperaron la fuente esperada; 2/2 respuestas incluyeron la cita esperada; 1/1 consulta sin evidencia se abstuvo. Vectores y respuestas sintéticos: no miden la calidad de OpenAI.
+- Una prueba comprueba que instrucciones adversariales del documento se envían como evidencia de usuario separada de las instrucciones del sistema. No demuestra inmunidad general frente a prompt injection.
+- Migraciones PostgreSQL/pgvector verificadas con `upgrade head` → `downgrade base` → `upgrade head`; Ruff aprobado.
+- `frontend`: 25 pruebas, lint, typecheck y build de producción aprobados.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx no afectó las pruebas.
+- GitHub Actions aprobada para `a2e43e1231217e02b40d23adb3ed58e0e04aaeaf`: [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940). Los jobs de backend y frontend finalizaron correctamente.
 
 ## Hito 8 — cuotas, telemetría privada y contenedores
 
@@ -111,5 +119,8 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - Frontend: 25 pruebas, lint, typecheck y build de producción aprobados tras actualizar el texto de la portada para reflejar el RAG implementado.
 - Las imágenes de API y frontend se construyeron. El stack Compose quedó saludable; el frontend respondió HTTP 200 e indicó la API disponible, `/ready` y `/metrics` respondieron dentro de la red privada y solo `127.0.0.1:3000` se publicó en el host. La configuración no publica puertos para API ni PostgreSQL.
 - Una cuenta sintética pudo iniciar sesión después de reiniciar PostgreSQL, confirmando persistencia básica del volumen. Los logs observados fueron eventos JSON sin query string, email ni contraseña; las métricas fueron consultables dentro del contenedor API.
+- `iniciar.ps1` pasó comprobación de sintaxis y pruebas simuladas con Docker para `.env` ausente, copiado del ejemplo y con contraseña propia: genera una contraseña cuando hace falta, conserva la existente y ejecuta migraciones y Compose bajo un nombre de proyecto aislado. La configuración Compose pasó `config --quiet`; la simulación no sustituyó la comprobación del stack real descrita arriba.
 - No se configuró una clave de OpenAI ni se hicieron solicitudes reales.
 - GitHub Actions aprobada para el commit `0ec58cc615b8903f3b4bfa6f5c941026aaa21709`: [ejecución 37980325026](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37980325026). Los jobs `backend` (Ruff y pytest con PostgreSQL/pgvector) y `frontend` (lint, typecheck, tests y build) finalizaron correctamente.
+
+El commit posterior `f482dee` solo actualizó el estado documental después de observar esa ejecución; no volvió a modificar el código cubierto por CI.
