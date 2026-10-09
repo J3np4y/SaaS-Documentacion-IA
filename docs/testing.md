@@ -9,6 +9,25 @@ Este es el registro de referencia para los resultados observados. Los hitos pued
 - Mantener datos ficticios; no usar documentos reales ni secretos.
 - No declarar una comprobación aprobada hasta ejecutarla o recibir un resultado verificable.
 
+## PostgreSQL y pgvector en Ubuntu
+
+En Ubuntu 24.04 con PostgreSQL 16, instala pgvector desde el repositorio PGDG e inicializa la extensión en cada base de datos que la necesite:
+
+```bash
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+sudo apt-get install --yes postgresql-16-pgvector
+sudo systemctl restart postgresql
+sudo -u postgres psql --dbname=docs_assistant_test --command "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+Sustituye `docs_assistant_test` por el nombre de tu base de datos. El paquete debe corresponder a la versión principal de PostgreSQL instalada (por ejemplo, `postgresql-16-pgvector` para PostgreSQL 16). El último comando necesita un rol con permiso para crear extensiones; en este ejemplo se ejecuta como el administrador local `postgres`.
+
+## CI — instalación de pgvector
+
+El servicio de PostgreSQL de CI instala PostgreSQL 16 y pgvector en el runner Ubuntu 24.04, en vez de descargar `pgvector/pgvector` de Docker Hub. Así se evita que el límite de descargas anónimas impida incluso iniciar las pruebas. La base de datos de pruebas es desechable y su rol tiene permisos de superusuario porque las migraciones crean la extensión `vector`; no apliques ese permiso a roles de aplicaciones en despliegues.
+
+GitHub Actions aprobada para el cambio: [ejecución 37995099881](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37995099881). Backend (Ruff y 80 pruebas) y frontend (lint, typecheck, pruebas y build) finalizaron correctamente.
+
 ## Hito 1 — base ejecutable
 
 - La hoja de ruta registra una API FastAPI con `/health`, PostgreSQL de desarrollo en Compose y pruebas automatizadas del endpoint.
