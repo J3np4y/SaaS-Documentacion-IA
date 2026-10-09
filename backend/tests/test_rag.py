@@ -29,6 +29,15 @@ def test_split_into_chunks_normalizes_whitespace_and_avoids_empty_values() -> No
     assert split_into_chunks(" \n ") == []
 
 
+def test_split_into_chunks_keeps_late_word_boundaries_to_bound_overlap_growth() -> None:
+    text = ("a" * 849 + " " + "b" * 999 + " ") * 40
+
+    chunks = split_into_chunks(text)
+
+    assert all(len(chunk) <= CHUNK_SIZE_CHARS for chunk in chunks)
+    assert all(len(chunk) >= CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS for chunk in chunks[:-1])
+
+
 def test_answer_response_requires_valid_citation_indexes(monkeypatch) -> None:
     from app.services import rag
 

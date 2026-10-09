@@ -1,18 +1,23 @@
 """Document upload and tenant authorization checks against isolated PostgreSQL."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app import models
+from app.core import settings
+from app.core.database import SessionLocal, get_db
 from app.main import app
-from app.services import document_storage, rag
+from app.services import document_storage, rag, rag_usage
 
 ORIGIN = {"origin": "http://localhost:3000"}
 PASSWORD = "correct-horse-battery-staple"
@@ -486,6 +491,251 @@ def test_rag_evaluation_dataset_measures_retrieval_citations_and_abstention(
             measured["citations"] += 1
 
     assert measured == {"retrieval": 2, "citations": 2, "abstentions": 1}
+
+
+def test_rag_quota_blocks_provider_calls_and_preserves_uploads(
+    document_client, monkeypatch
+) -> None:
+    owner = register(document_client, "quota@example.com")
+    monkeypatch.setattr(settings, "RAG_DAILY_OPERATION_LIMIT", 1)
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+    embedding_calls = []
+
+    async def embeddings(texts):
+        embedding_calls.extend(texts)
+        return [[1.0] + [0.0] * 1535 for _ in texts]
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    first = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("first.txt", b"Primer documento indexable.", "text/plain")},
+    )
+    second = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("second.txt", b"Segundo documento preservado.", "text/plain")},
+    )
+    question = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "¿Qué documentos hay?"},
+    )
+
+    assert first.status_code == 201
+    assert first.json()["rag_status"] == "ready"
+    assert second.status_code == 201
+    assert second.json()["rag_status"] == "pending"
+    assert question.status_code == 429
+    assert len(embedding_calls) == 1
+    downloaded = document_client.get(
+        f"/organizations/me/documents/{second.json()['id']}/download"
+    )
+    assert downloaded.content == b"Segundo documento preservado."
+
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(models.RagUsagePeriod).where(
+                models.RagUsagePeriod.organization_id == owner["organization_id"],
+                models.RagUsagePeriod.period_type == "day",
+            )
+        ).all()
+    assert len(rows) == 1
+    assert rows[0].operation_count == 1
+
+
+def test_failed_provider_attempt_consumes_quota(document_client, monkeypatch) -> None:
+    register(document_client, "failed-quota@example.com")
+    monkeypatch.setattr(settings, "RAG_DAILY_OPERATION_LIMIT", 1)
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def provider_failure(_texts):
+        raise rag.RagProviderError("provider detail must not be returned")
+
+    monkeypatch.setattr(rag, "create_embeddings", provider_failure)
+    uploaded = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("failure.txt", b"El proveedor puede fallar.", "text/plain")},
+    )
+    rejected = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "¿Qué ocurrió?"},
+    )
+
+    assert uploaded.status_code == 201
+    assert uploaded.json()["rag_status"] == "failed"
+    assert rejected.status_code == 429
+    assert "provider detail" not in rejected.text
+
+
+def test_quota_store_failure_fails_closed_but_keeps_new_upload(
+    document_client, monkeypatch
+) -> None:
+    from app.api import documents
+
+    register(document_client, "quota-store-failure@example.com")
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    def quota_unavailable(_organization_id: int) -> None:
+        raise rag_usage.RagQuotaUnavailable()
+
+    monkeypatch.setattr(
+        documents, "reserve_rag_operation", quota_unavailable
+    )
+    monkeypatch.setattr(
+        rag,
+        "create_embeddings",
+        lambda _texts: pytest.fail("OpenAI must not be called without quota approval"),
+    )
+    content = b"Keep this source document."
+
+    uploaded = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("kept.txt", content, "text/plain")},
+    )
+    question = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "What does it say?"},
+    )
+    download = document_client.get(
+        f"/organizations/me/documents/{uploaded.json()['id']}/download"
+    )
+
+    assert uploaded.status_code == 201
+    assert uploaded.json()["rag_status"] == "pending"
+    assert question.status_code == 503
+    assert "límite de uso" in question.json()["detail"]
+    assert download.content == content
+
+
+def test_rag_quota_isolated_by_organization(document_client, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "RAG_DAILY_OPERATION_LIMIT", 1)
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(texts):
+        return [[1.0] + [0.0] * 1535 for _ in texts]
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    register(document_client, "first-tenant@example.com")
+    first = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={
+            "file": (
+                "first.txt",
+                b"Documento de la primera organizacion.",
+                "text/plain",
+            )
+        },
+    )
+
+    other_client = TestClient(app)
+    register(other_client, "second-tenant@example.com")
+    second = other_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={
+            "file": ("second.txt", b"Documento de otra organizacion.", "text/plain")
+        },
+    )
+
+    assert first.json()["rag_status"] == "ready"
+    assert second.json()["rag_status"] == "ready"
+
+
+def test_rag_quota_resets_at_utc_day_and_month_boundaries(
+    document_client, monkeypatch
+) -> None:
+    owner = register(document_client, "utc-quota@example.com")
+    monkeypatch.setattr(settings, "RAG_DAILY_OPERATION_LIMIT", 1)
+    monkeypatch.setattr(settings, "RAG_MONTHLY_OPERATION_LIMIT", 2)
+    organization_id = owner["organization_id"]
+    last_january_day = datetime(2026, 1, 31, 23, 59, tzinfo=UTC)
+    first_february_day = datetime(2026, 2, 1, 0, 1, tzinfo=UTC)
+    next_february_day = datetime(2026, 2, 2, 0, 1, tzinfo=UTC)
+    third_february_day = datetime(2026, 2, 3, 0, 1, tzinfo=UTC)
+
+    rag_usage.reserve_rag_operation(organization_id, last_january_day)
+    with pytest.raises(rag_usage.RagQuotaExceeded):
+        rag_usage.reserve_rag_operation(organization_id, last_january_day)
+    rag_usage.reserve_rag_operation(organization_id, first_february_day)
+    rag_usage.reserve_rag_operation(organization_id, next_february_day)
+    with pytest.raises(rag_usage.RagQuotaExceeded):
+        rag_usage.reserve_rag_operation(organization_id, third_february_day)
+
+
+def test_rag_quota_reservations_are_atomic_under_concurrent_requests(
+    document_client, monkeypatch
+) -> None:
+    owner = register(document_client, "concurrent-quota@example.com")
+    monkeypatch.setattr(settings, "RAG_DAILY_OPERATION_LIMIT", 3)
+    monkeypatch.setattr(settings, "RAG_MONTHLY_OPERATION_LIMIT", 30)
+    organization_id = owner["organization_id"]
+    instant = datetime(2026, 5, 4, 12, 0, tzinfo=UTC)
+
+    def attempt_reservation() -> bool:
+        try:
+            rag_usage.reserve_rag_operation(organization_id, instant)
+            return True
+        except rag_usage.RagQuotaExceeded:
+            return False
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(lambda _: attempt_reservation(), range(12)))
+
+    assert sum(results) == 3
+
+
+def test_metrics_and_request_logs_exclude_query_values_and_identity(
+    document_client, caplog
+) -> None:
+    caplog.set_level("INFO", logger="app.request")
+    response = document_client.get("/health?email=private@example.com&secret=not-a-secret")
+    metric_response = document_client.get("/metrics")
+
+    assert response.status_code == 200
+    assert metric_response.status_code == 200
+    assert 'route="/health"' in metric_response.text
+    assert "private@example.com" not in metric_response.text
+    assert "not-a-secret" not in metric_response.text
+    assert all(
+        "private@example.com" not in record.message
+        and "not-a-secret" not in record.message
+        for record in caplog.records
+        if record.name == "app.request"
+    )
+
+
+def test_explicit_index_rejects_documents_over_the_fragment_work_limit(
+    document_client, monkeypatch
+) -> None:
+    from app.api import documents
+
+    register(document_client, "large-index@example.com")
+    uploaded = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("long.txt", b"x" * 2000, "text/plain")},
+    )
+    monkeypatch.setattr(documents, "RAG_MAX_INDEX_CHUNKS", 1)
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        rag,
+        "create_embeddings",
+        lambda _texts: pytest.fail("No embeddings should be sent for oversized work"),
+    )
+
+    indexed = document_client.post(
+        f"/organizations/me/documents/{uploaded.json()['id']}/index", headers=ORIGIN
+    )
+    listed = document_client.get("/organizations/me/documents")
+
+    assert indexed.status_code == 413
+    assert listed.json()[0]["rag_status"] == "failed"
 
 
 def test_documents_are_scoped_to_membership_and_organization(document_client) -> None:

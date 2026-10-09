@@ -9,6 +9,8 @@ from app.api.auth import router as auth_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
 from app.api.organizations import router as organizations_router
+from app.api.telemetry import observe_request
+from app.api.telemetry import router as telemetry_router
 from app.core.database import dispose_engine
 from app.services.document_storage import MAX_UPLOAD_REQUEST_BYTES
 
@@ -26,9 +28,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(health_router)
+app.include_router(telemetry_router)
 app.include_router(auth_router)
 app.include_router(organizations_router)
 app.include_router(documents_router)
+app.middleware("http")(observe_request)
 
 
 @app.middleware("http")

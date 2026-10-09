@@ -1,10 +1,10 @@
 # SaaS de documentación empresarial con IA
 
-Aplicación web para que equipos colaboren alrededor de su documentación y, en una siguiente etapa, puedan encontrar información y obtener respuestas fundamentadas en sus fuentes.
+Aplicación web para que equipos colaboren alrededor de su documentación, encuentren información y obtengan respuestas fundamentadas en sus fuentes.
 
 Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte se construye entendiendo primero el problema, los conceptos y las decisiones de diseño. La meta no es producir código a ciegas, sino aprender cómo las piezas de una aplicación real se relacionan y cómo tomar decisiones técnicas con criterio.
 
-> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos, gestión de documentos, extracción y búsqueda textual en español, además de preguntas con recuperación y citas mediante RAG. El Hito 7 está completado y la CI está aprobada. Es un prototipo educativo, no un servicio listo para producción.
+> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos, gestión de documentos, extracción y búsqueda textual en español, además de preguntas con recuperación y citas mediante RAG. El Hito 8 añade cuotas RAG, telemetría privada y ejecución local en contenedores; su verificación local está registrada y la CI está pendiente. Es un prototipo educativo, no un servicio listo para producción.
 
 ## Cómo funciona
 
@@ -68,6 +68,8 @@ Abre `http://localhost:3000`. La API está disponible en `http://localhost:8000`
 El Hito 5 admite PDF, DOCX y TXT de hasta 10 MiB y guarda los archivos en `.data/documents/` (ignorado por Git). Puedes cambiar esa ruta con `DOCUMENT_STORAGE_DIR`. No subas archivos sensibles: esta versión no incluye análisis antimalware, cuotas ni controles de producción.
 
 El Hito 7 utiliza OpenAI para indexar documentos y responder preguntas. Si quieres probarlo, configura `OPENAI_API_KEY` en `.env`; las solicitudes enviarán a OpenAI el contenido que se indexe, las preguntas y los fragmentos recuperados, y pueden generar costes. Sin clave, las funciones anteriores siguen disponibles, pero RAG no puede indexar ni responder.
+
+El Hito 8 añade imágenes de contenedor, cuotas RAG y métricas técnicas. La guía de configuración, comprobación, copias de seguridad y límites está en [Hito 8](docs/hito-08.md); esta ejecución local no publica el servicio.
 
 ## Uso responsable
 

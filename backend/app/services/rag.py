@@ -39,7 +39,7 @@ def split_into_chunks(text: str) -> list[str]:
     while start < len(normalized):
         end = min(start + CHUNK_SIZE_CHARS, len(normalized))
         if end < len(normalized):
-            boundary = normalized.rfind(" ", start + CHUNK_SIZE_CHARS // 2, end)
+            boundary = normalized.rfind(" ", start + CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS, end)
             if boundary > start:
                 end = boundary
         chunk = normalized[start:end].strip()

@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import Principal, get_current_principal, require_frontend_origin
 from app.core.database import get_db
-from app.core.settings import RAG_MAX_CONTEXT_CHUNKS, RAG_MAX_QUERY_CHARS, RAG_MIN_SIMILARITY
+from app.core.settings import (
+    RAG_MAX_CONTEXT_CHUNKS,
+    RAG_MAX_INDEX_CHUNKS,
+    RAG_MAX_QUERY_CHARS,
+    RAG_MIN_SIMILARITY,
+)
 from app.models import Document, DocumentChunk
 from app.schemas.document import (
     AnswerCitation,
@@ -32,9 +37,18 @@ from app.services.document_storage import (
     store_object,
     validate_document,
 )
+from app.services.rag_usage import (
+    RagQuotaExceeded,
+    RagQuotaUnavailable,
+    reserve_rag_operation,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/organizations/me/documents", tags=["documents"])
+
+
+class RagIndexLimitExceeded(ValueError):
+    """The document would require too much work in one indexing operation."""
 
 
 def _read_model(document: Document) -> DocumentRead:
@@ -49,8 +63,14 @@ def _read_model(document: Document) -> DocumentRead:
     )
 
 
-async def _index_text(db: Session, document: Document) -> None:
+def _document_chunks(document: Document) -> list[str]:
     chunks = rag.split_into_chunks(document.extracted_text or "")
+    if len(chunks) > RAG_MAX_INDEX_CHUNKS:
+        raise RagIndexLimitExceeded
+    return chunks
+
+
+async def _index_text(db: Session, document: Document, chunks: list[str]) -> None:
     if not chunks:
         document.rag_status = "failed"
         return
@@ -134,11 +154,22 @@ async def upload_document(
         db.flush()
         if extraction_status == "ready" and rag.is_configured():
             try:
-                await _index_text(db, document)
-                db.flush()
-            except rag.RagProviderError:
+                chunks = _document_chunks(document)
+                reserve_rag_operation(principal.organization.id)
+            except RagQuotaExceeded:
+                pass
+            except RagQuotaUnavailable:
+                logger.error("No se pudo comprobar la cuota RAG; documento pendiente")
+            except RagIndexLimitExceeded:
                 document.rag_status = "failed"
                 db.flush()
+            else:
+                try:
+                    await _index_text(db, document, chunks)
+                    db.flush()
+                except rag.RagProviderError:
+                    document.rag_status = "failed"
+                    db.flush()
         db.refresh(document)
         db.commit()
     except SQLAlchemyError:
@@ -225,7 +256,30 @@ async def index_document(
         raise HTTPException(status_code=503, detail="El servicio de OpenAI no está configurado.")
 
     try:
-        await _index_text(db, document)
+        chunks = _document_chunks(document)
+    except RagIndexLimitExceeded:
+        document.rag_status = "failed"
+        db.commit()
+        raise HTTPException(
+            status_code=413,
+            detail="El documento requiere demasiado trabajo de indexación.",
+        ) from None
+
+    try:
+        reserve_rag_operation(principal.organization.id)
+    except RagQuotaExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Se alcanzó el límite de operaciones RAG de la organización.",
+        ) from None
+    except RagQuotaUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo comprobar el límite de uso.",
+        ) from None
+
+    try:
+        await _index_text(db, document, chunks)
         db.commit()
         db.refresh(document)
     except rag.RagProviderError:
@@ -260,6 +314,19 @@ async def ask_documents(
         raise HTTPException(status_code=422, detail="La pregunta supera el límite permitido.")
     if not rag.is_configured():
         raise HTTPException(status_code=503, detail="El servicio de OpenAI no está configurado.")
+
+    try:
+        reserve_rag_operation(principal.organization.id)
+    except RagQuotaExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Se alcanzó el límite de operaciones RAG de la organización.",
+        ) from None
+    except RagQuotaUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo comprobar el límite de uso.",
+        ) from None
 
     try:
         query_embedding = (await rag.create_embeddings([request.question]))[0]
@@ -378,9 +445,20 @@ async def reprocess_document(
     try:
         if document.extraction_status == "ready" and rag.is_configured():
             try:
-                await _index_text(db, document)
-            except rag.RagProviderError:
+                chunks = _document_chunks(document)
+                reserve_rag_operation(principal.organization.id)
+            except RagQuotaExceeded:
+                document.rag_status = "pending"
+            except RagQuotaUnavailable:
+                logger.error("No se pudo comprobar la cuota RAG; documento pendiente")
+                document.rag_status = "pending"
+            except RagIndexLimitExceeded:
                 document.rag_status = "failed"
+            else:
+                try:
+                    await _index_text(db, document, chunks)
+                except rag.RagProviderError:
+                    document.rag_status = "failed"
         db.commit()
         db.refresh(document)
     except SQLAlchemyError:

@@ -22,8 +22,7 @@ export default async function HomePage() {
         <p className="eyebrow">CONOCIMIENTO DE EQUIPO, EN UN SOLO LUGAR</p>
         <h1 id="welcome-title">La documentación de tu equipo, lista para encontrar.</h1>
         <p className="hero__copy">
-          Carga y organiza documentos de tu equipo. La búsqueda y las respuestas basadas en fuentes
-          llegarán en una siguiente etapa.
+          Carga y organiza documentos de tu equipo, busca en ellos y consulta respuestas con fuentes.
         </p>
         <div className="health-card">
           <div>
@@ -45,7 +44,7 @@ export default async function HomePage() {
         <article className="feature-card">
           <span className="feature-card__number">02</span>
           <h2>Respuestas con contexto</h2>
-          <p>La búsqueda asistida se apoyará en los documentos y mostrará sus fuentes.</p>
+          <p>Las respuestas se basan en fragmentos de tus documentos y muestran sus fuentes.</p>
         </article>
         <article className="feature-card">
           <span className="feature-card__number">03</span>

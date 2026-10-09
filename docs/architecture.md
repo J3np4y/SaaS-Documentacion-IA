@@ -61,6 +61,12 @@ El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estánda
 
 La aplicación usa la API de OpenAI para embeddings y generación, y PostgreSQL con pgvector para recuperar fragmentos de la organización autenticada. El texto del documento, la pregunta y el contexto se envían a OpenAI cuando el proveedor está configurado. Los documentos antiguos requieren indexación explícita; los nuevos se indexan durante la carga solo con una clave configurada. Las decisiones de modelos, fragmentación, citas, límites y privacidad están en [ADR 0005](adr/0005-rag-models-and-retrieval.md) y [hito-07.md](hito-07.md). La evaluación local usa vectores y respuestas sintéticos y no sustituye una medición de calidad del modelo real.
 
+## Operación y contenedores (Hito 8 implementado; CI pendiente)
+
+La aplicación limita operaciones RAG por organización mediante contadores diarios y mensuales UTC en PostgreSQL. Las reservas se hacen con una operación atómica antes de contactar con OpenAI; se contabilizan los fallos. La API expone métricas generales de peticiones y latencia, y emite logs técnicos resumidos sin cuerpos ni identidad. Las métricas son agregados en memoria, no un almacén histórico compartido.
+
+La configuración de contenedores separa frontend, API y PostgreSQL, mantiene la base de datos y los documentos en volúmenes y deja la API en la red interna; solo el frontend se publica y queda ligado a loopback por defecto. La guía permite probar el stack y hacer una copia manual de PostgreSQL, pero no despliega la aplicación ni aporta por sí sola TLS, backups verificados, escalado ni todos los controles de producción. Véase [Hito 8](hito-08.md) y [ADR 0006](adr/0006-observability-cost-control-and-containers.md).
+
 ## Dirección objetivo
 
 ```text

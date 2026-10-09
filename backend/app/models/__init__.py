@@ -12,6 +12,7 @@ from app.models.document import Document, DocumentChunk
 from app.models.invitation import Invitation
 from app.models.membership import Membership
 from app.models.organization import Organization
+from app.models.rag_usage import RagUsagePeriod
 from app.models.user import User
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "Invitation",
     "Membership",
     "Organization",
+    "RagUsagePeriod",
     "User",
 ]

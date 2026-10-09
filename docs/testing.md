@@ -100,3 +100,15 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - Frontend: 25 pruebas, lint, typecheck y build de producción aprobados.
 - No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx deprecada continúa sin afectar la suite.
 - GitHub Actions aprobada para el commit `a2e43e1231217e02b40d23adb3ed58e0e04aaeaf`: [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940). Los jobs de backend (Ruff y pytest contra pgvector) y frontend (lint, typecheck, tests y build) terminaron correctamente.
+
+## Hito 8 — cuotas, telemetría privada y contenedores
+
+### Resultados locales observados
+
+- Backend: `pytest -q` aprobó 80 pruebas contra PostgreSQL desechable con pgvector; Ruff y `compileall` aprobaron. La ejecución local usó Python 3.14. Se mantiene una advertencia deprecada de Starlette/httpx, sin fallos.
+- Las pruebas cubren límites diarios y mensuales, periodos UTC, concurrencia, aislamiento entre organizaciones, fallos del proveedor y fallo cerrado si no se puede consultar la cuota. También comprueban que una carga sigue disponible cuando la cuota no puede reservarse y que ni métricas ni logs registran query string o identidad.
+- Migraciones PostgreSQL verificadas con `upgrade head` → `downgrade base` → `upgrade head`; la migración de Hito 8 se aplicó de nuevo al stack Compose.
+- Frontend: 25 pruebas, lint, typecheck y build de producción aprobados tras actualizar el texto de la portada para reflejar el RAG implementado.
+- Las imágenes de API y frontend se construyeron. El stack Compose quedó saludable; el frontend respondió HTTP 200 e indicó la API disponible, `/ready` y `/metrics` respondieron dentro de la red privada y solo `127.0.0.1:3000` se publicó en el host. La configuración no publica puertos para API ni PostgreSQL.
+- Una cuenta sintética pudo iniciar sesión después de reiniciar PostgreSQL, confirmando persistencia básica del volumen. Los logs observados fueron eventos JSON sin query string, email ni contraseña; las métricas fueron consultables dentro del contenedor API.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La CI de GitHub para Hito 8 queda pendiente de ejecutar después de subir los cambios.
