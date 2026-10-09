@@ -4,7 +4,7 @@ Aplicación web para que equipos colaboren alrededor de su documentación, encue
 
 Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte se construye entendiendo primero el problema, los conceptos y las decisiones de diseño. La meta no es producir código a ciegas, sino aprender cómo las piezas de una aplicación real se relacionan y cómo tomar decisiones técnicas con criterio.
 
-> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos, gestión de documentos, extracción y búsqueda textual en español, además de preguntas con recuperación y citas mediante RAG. El Hito 8 añade cuotas RAG, telemetría privada y ejecución local en contenedores; su verificación local está registrada y la CI está pendiente. Es un prototipo educativo, no un servicio listo para producción.
+> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos, gestión de documentos, extracción y búsqueda textual en español, además de preguntas con recuperación y citas mediante RAG. El Hito 8 añade cuotas RAG, telemetría privada y ejecución local en contenedores; su verificación local y la CI están aprobadas. Es un prototipo educativo, no un servicio listo para producción.
 
 ## Cómo funciona
 

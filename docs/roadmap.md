@@ -63,6 +63,6 @@ El recorrido, las decisiones y la comprobación local están en [hito-06.md](hit
 
 La indexación, recuperación aislada por organización, respuestas con citas y abstención están implementadas. Las pruebas locales, CI y evaluación determinista están registradas en [testing.md](testing.md). Véase el [hito](hito-07.md) y [ADR 0005](adr/0005-rag-models-and-retrieval.md).
 
-## Hito 8 — observabilidad, control de coste y contenedores: implementación local completada; CI pendiente
+## Hito 8 — observabilidad, control de coste y contenedores: completado; CI aprobada
 
 Cuotas RAG por organización, señales operativas que no exponen contenido y una ejecución reproducible en contenedores, sin publicar la aplicación. La verificación local está registrada en [testing.md](testing.md); alcance, guía y decisiones: [hito-08.md](hito-08.md) y [ADR 0006](adr/0006-observability-cost-control-and-containers.md).

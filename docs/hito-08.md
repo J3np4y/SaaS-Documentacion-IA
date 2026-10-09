@@ -1,6 +1,6 @@
 # Hito 8 — observabilidad, control de coste y contenedores
 
-## Estado: implementación local completada; CI pendiente
+## Estado: completado; CI aprobada
 
 En el Hito 7 se añadieron preguntas con RAG y llamadas a OpenAI. Ahora necesitamos limitar el uso acumulado para que las repeticiones no sean ilimitadas, ver si los servicios responden y preparar una ejecución reproducible en contenedores sin publicar la aplicación.
 

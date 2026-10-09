@@ -111,4 +111,5 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - Frontend: 25 pruebas, lint, typecheck y build de producción aprobados tras actualizar el texto de la portada para reflejar el RAG implementado.
 - Las imágenes de API y frontend se construyeron. El stack Compose quedó saludable; el frontend respondió HTTP 200 e indicó la API disponible, `/ready` y `/metrics` respondieron dentro de la red privada y solo `127.0.0.1:3000` se publicó en el host. La configuración no publica puertos para API ni PostgreSQL.
 - Una cuenta sintética pudo iniciar sesión después de reiniciar PostgreSQL, confirmando persistencia básica del volumen. Los logs observados fueron eventos JSON sin query string, email ni contraseña; las métricas fueron consultables dentro del contenedor API.
-- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La CI de GitHub para Hito 8 queda pendiente de ejecutar después de subir los cambios.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales.
+- GitHub Actions aprobada para el commit `0ec58cc615b8903f3b4bfa6f5c941026aaa21709`: [ejecución 37980325026](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37980325026). Los jobs `backend` (Ruff y pytest con PostgreSQL/pgvector) y `frontend` (lint, typecheck, tests y build) finalizaron correctamente.
