@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/brand/nexora-light.png" alt="Nexora" width="180" />
+  <img src="frontend/public/brand/nexora-wordmark.png" alt="Nexora" width="168" height="76" />
   <h1>El conocimiento de tu equipo, conectado.</h1>
   <p>Documentos organizados. Respuestas con fuentes. Un proyecto para aprender cómo se construye una aplicación real.</p>
 </div>
