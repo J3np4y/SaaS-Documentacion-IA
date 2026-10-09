@@ -11,7 +11,7 @@ Este repositorio está pensado para aprender a construir una aplicación web pas
 
 El Hito 1 figura como completado en la hoja de ruta, pero no tiene un documento propio; su contexto inicial está en el README y en el [ADR 0001](adr/0001-base-tecnica.md).
 
-Los hitos anteriores al actual sirven como material de estudio: no es necesario volver a implementar lo que ya está completado. El Hito 6 está iniciado; sus decisiones abiertas no son requisitos aprobados.
+Los hitos anteriores al actual sirven como material de estudio: no es necesario volver a implementar lo que ya está completado. El Hito 6 ya está completado; los hitos posteriores de la hoja de ruta todavía no tienen una especificación propia.
 
 ## Un ciclo corto para cada paso
 

@@ -51,7 +51,7 @@ El recorrido de aprendizaje y los criterios están en [hito-05.md](hito-05.md). 
 
 ## Hitos posteriores
 
-## Hito 6 — extracción de contenido, ingesta y búsqueda textual: implementado; CI pendiente
+## Hito 6 — extracción de contenido, ingesta y búsqueda textual: completado; CI aprobada
 
 - Extraer texto de PDF, DOCX y TXT durante la carga; preservar el original si falla.
 - Guardar el texto y habilitar búsqueda PostgreSQL en español, aislada por organización.

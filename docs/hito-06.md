@@ -1,6 +1,6 @@
 # Hito 6 — extracción de contenido, ingesta y búsqueda textual
 
-## Estado: implementado y verificado localmente; CI pendiente
+## Estado: completado; verificaciones locales y CI aprobadas
 
 El Hito 5 permite guardar PDF, DOCX y TXT. Este hito añade el primer paso para encontrar información dentro de esos archivos: extraer su texto y ofrecer una búsqueda limitada a la organización de la persona autenticada. Las respuestas generadas por IA y RAG no forman parte de este hito.
 
@@ -54,7 +54,7 @@ No se añadirá un trabajador en segundo plano en esta fase. La interfaz y la AP
 - [x] Un fallo de extracción se representa explícitamente y no se confunde con un documento listo para buscar.
 - [x] Se prueban formatos admitidos, entradas vacías/corruptas, límites, errores y acceso entre organizaciones.
 - [x] La UI presenta estados y errores comprensibles sin filtrar detalles internos.
-- [ ] CI valida backend y frontend; `docs/testing.md` registra los resultados observados.
+- [x] CI valida backend y frontend; `docs/testing.md` registra los resultados observados.
 
 ## Referencias
 

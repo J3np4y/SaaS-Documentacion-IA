@@ -88,4 +88,4 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - Migración PostgreSQL verificada con `upgrade head` → `downgrade base` → `upgrade head`, incluyendo la columna generada y el índice GIN de búsqueda española.
 - `frontend`: 22 pruebas, lint, typecheck y build de producción aprobados.
 - La suite backend mantiene una advertencia Starlette/httpx deprecada; no afectó los resultados.
-- CI de GitHub para Hito 6: pendiente de la publicación de estos cambios.
+- GitHub Actions aprobada en el commit `73d073af8974a085d03cd860bbfdb01e5bef9707`: [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). Los jobs de backend (Ruff y pytest con PostgreSQL) y frontend (lint, typecheck, tests y build) finalizaron correctamente.
