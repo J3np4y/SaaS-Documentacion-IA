@@ -19,8 +19,19 @@ type DocumentItem = {
   size_bytes: number;
   created_at: string;
   extraction_status: "pending" | "ready" | "failed";
+  rag_status: "pending" | "ready" | "failed";
 };
 type DocumentSearchResult = Pick<DocumentItem, "id" | "filename"> & { snippet: string };
+type AnswerResult = {
+  answer: string;
+  abstained: boolean;
+  citations: Array<{
+    document_id: string;
+    filename: string;
+    chunk_index: number;
+    excerpt: string;
+  }>;
+};
 type AuthMode = "register" | "login";
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -59,6 +70,8 @@ export function AuthPanel() {
   const [documentBusy, setDocumentBusy] = useState(false);
   const [searchBusy, setSearchBusy] = useState(false);
   const [searchResults, setSearchResults] = useState<DocumentSearchResult[] | null>(null);
+  const [answer, setAnswer] = useState<AnswerResult | null>(null);
+  const [answerBusy, setAnswerBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteExpires, setInviteExpires] = useState("");
   const [memberRoles, setMemberRoles] = useState<Record<string, Member["role"]>>({});
@@ -160,6 +173,8 @@ export function AuthPanel() {
       setUser(null);
       setMembers([]);
       setDocuments([]);
+      setAnswer(null);
+      setSearchResults(null);
       setDocumentsLoading(false);
       setInviteCode("");
       setMode("login");
@@ -228,6 +243,8 @@ export function AuthPanel() {
       form.reset();
       if (uploaded.extraction_status === "failed") {
         setError("El documento se guardó, pero no se pudo extraer su texto. El original sigue disponible.");
+      } else if (uploaded.rag_status === "failed") {
+        setError("El documento se guardó, pero no se pudo preparar para preguntas. Puedes reintentar.");
       }
       await loadDocuments();
     } catch (cause) {
@@ -252,6 +269,45 @@ export function AuthPanel() {
       setError(cause instanceof Error ? cause.message : "No se pudo buscar en los documentos.");
     } finally {
       setSearchBusy(false);
+    }
+  }
+
+  async function askDocuments(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = String(new FormData(event.currentTarget).get("question") ?? "").trim();
+    if (!question) {
+      setError("Escribe una pregunta.");
+      return;
+    }
+    setError("");
+    setAnswer(null);
+    setAnswerBusy(true);
+    try {
+      const result = await requestJson<AnswerResult>("/organizations/me/documents/ask", {
+        method: "POST",
+        body: JSON.stringify({ question }),
+      });
+      setAnswer(result);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo responder la pregunta.");
+    } finally {
+      setAnswerBusy(false);
+    }
+  }
+
+  async function indexDocument(document: DocumentItem) {
+    setError("");
+    setDocumentBusy(true);
+    try {
+      await requestJson<DocumentItem>(
+        `/organizations/me/documents/${document.id}/index`,
+        { method: "POST" },
+      );
+      await loadDocuments();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo preparar el documento.");
+    } finally {
+      setDocumentBusy(false);
     }
   }
 
@@ -365,6 +421,11 @@ export function AuthPanel() {
           <div className="document-tools">
             <h3>Documentos de tu organización</h3>
             <p>PDF, DOCX o TXT · máximo 10 MiB por archivo. El borrado es definitivo.</p>
+            <p role="note">
+              Si OpenAI está configurado, al indexar documentos y hacer preguntas se envían a
+              OpenAI el texto extraído, la pregunta y los fragmentos pertinentes; puede generar
+              costes. No uses información sensible.
+            </p>
             <form className="document-form" onSubmit={uploadDocument}>
               <label>
                 Elige un documento
@@ -412,6 +473,42 @@ export function AuthPanel() {
                 )}
               </div>
             )}
+            <form className="document-form" onSubmit={askDocuments}>
+              <label>
+                Pregunta sobre tus documentos
+                <input name="question" type="text" maxLength={1000} required />
+              </label>
+              <button className="button" type="submit" disabled={answerBusy}>
+                {answerBusy ? "Consultando…" : "Preguntar"}
+              </button>
+            </form>
+            {answer && (
+              <div aria-live="polite" className="document-answer">
+                <h4>{answer.abstained ? "Sin evidencia suficiente" : "Respuesta"}</h4>
+                <p>{answer.answer}</p>
+                {answer.citations.length > 0 && (
+                  <div>
+                    <h5>Fuentes</h5>
+                    <ul className="document-list">
+                      {answer.citations.map((citation) => (
+                        <li key={`${citation.document_id}-${citation.chunk_index}`}>
+                          <span>
+                            <strong>{citation.filename}</strong>
+                            <small>{citation.excerpt}</small>
+                          </span>
+                          <a
+                            className="button button--quiet"
+                            href={`/api/backend/organizations/me/documents/${citation.document_id}/download`}
+                          >
+                            Abrir original
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
             {documentsLoading ? (
               <p role="status" aria-live="polite">Cargando documentos…</p>
             ) : documents.length === 0 ? (
@@ -426,11 +523,13 @@ export function AuthPanel() {
                         {document.content_type} · {(document.size_bytes / (1024 * 1024)).toFixed(2)} MiB
                         {" · "}Cargado {new Date(document.created_at).toLocaleDateString()}
                         {" · "}
-                        {document.extraction_status === "ready"
-                          ? "Texto listo para buscar"
-                          : document.extraction_status === "failed"
-                            ? "No se pudo extraer texto"
-                            : "Pendiente de extracción"}
+                        {document.extraction_status === "failed"
+                          ? "No se pudo extraer texto"
+                          : document.rag_status === "ready"
+                            ? "Listo para preguntas"
+                            : document.rag_status === "failed"
+                              ? "No se pudo preparar para preguntas"
+                              : "Pendiente de preparar para preguntas"}
                       </small>
                     </span>
                     <a
@@ -455,6 +554,16 @@ export function AuthPanel() {
                         onClick={() => void reprocessDocument(document)}
                       >
                         Reintentar extracción
+                      </button>
+                    )}
+                    {document.extraction_status === "ready" && document.rag_status !== "ready" && (
+                      <button
+                        className="button button--quiet"
+                        type="button"
+                        disabled={documentBusy}
+                        onClick={() => void indexDocument(document)}
+                      >
+                        Preparar para preguntas
                       </button>
                     )}
                   </li>

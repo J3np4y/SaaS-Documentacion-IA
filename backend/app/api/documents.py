@@ -12,8 +12,16 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import Principal, get_current_principal, require_frontend_origin
 from app.core.database import get_db
-from app.models import Document
-from app.schemas.document import DocumentRead, DocumentSearchResult
+from app.core.settings import RAG_MAX_CONTEXT_CHUNKS, RAG_MAX_QUERY_CHARS, RAG_MIN_SIMILARITY
+from app.models import Document, DocumentChunk
+from app.schemas.document import (
+    AnswerCitation,
+    AnswerRead,
+    AnswerRequest,
+    DocumentRead,
+    DocumentSearchResult,
+)
+from app.services import rag
 from app.services.document_processing import DocumentExtractionError, extract_document_text
 from app.services.document_storage import (
     MAX_DOCUMENT_SIZE_BYTES,
@@ -37,7 +45,29 @@ def _read_model(document: Document) -> DocumentRead:
         size_bytes=document.size_bytes,
         created_at=document.created_at,
         extraction_status=document.extraction_status,
+        rag_status=document.rag_status,
     )
+
+
+async def _index_text(db: Session, document: Document) -> None:
+    chunks = rag.split_into_chunks(document.extracted_text or "")
+    if not chunks:
+        document.rag_status = "failed"
+        return
+    embeddings = await rag.create_embeddings(chunks)
+    db.execute(
+        DocumentChunk.__table__.delete().where(DocumentChunk.document_id == document.id)
+    )
+    db.add_all(
+        DocumentChunk(
+            document_id=document.id,
+            chunk_index=index,
+            content=content,
+            embedding=embedding,
+        )
+        for index, (content, embedding) in enumerate(zip(chunks, embeddings, strict=True))
+    )
+    document.rag_status = "ready"
 
 
 def _find_document(db: Session, document_id: UUID, organization_id: UUID) -> Document:
@@ -76,9 +106,11 @@ async def upload_document(
     try:
         extracted_text = extract_document_text(content_type, content)
         extraction_status = "ready"
+        rag_status = "pending"
     except DocumentExtractionError:
         extracted_text = None
         extraction_status = "failed"
+        rag_status = "failed"
 
     storage_key = uuid4().hex
     try:
@@ -95,10 +127,18 @@ async def upload_document(
         size_bytes=len(content),
         extracted_text=extracted_text,
         extraction_status=extraction_status,
+        rag_status=rag_status,
     )
     db.add(document)
     try:
         db.flush()
+        if extraction_status == "ready" and rag.is_configured():
+            try:
+                await _index_text(db, document)
+                db.flush()
+            except rag.RagProviderError:
+                document.rag_status = "failed"
+                db.flush()
         db.refresh(document)
         db.commit()
     except SQLAlchemyError:
@@ -167,6 +207,126 @@ def search_documents(
     ]
 
 
+@router.post(
+    "/{document_id}/index",
+    response_model=DocumentRead,
+    dependencies=[Depends(require_frontend_origin)],
+)
+async def index_document(
+    document_id: UUID,
+    response: Response,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    db: Annotated[Session, Depends(get_db)],
+) -> DocumentRead:
+    document = _find_document(db, document_id, principal.organization.id)
+    if document.extraction_status != "ready" or not document.extracted_text:
+        raise HTTPException(status_code=409, detail="El documento no tiene texto que se pueda indexar.")
+    if not rag.is_configured():
+        raise HTTPException(status_code=503, detail="El servicio de OpenAI no está configurado.")
+
+    try:
+        await _index_text(db, document)
+        db.commit()
+        db.refresh(document)
+    except rag.RagProviderError:
+        db.rollback()
+        document = _find_document(db, document_id, principal.organization.id)
+        db.execute(
+            DocumentChunk.__table__.delete().where(DocumentChunk.document_id == document.id)
+        )
+        document.rag_status = "failed"
+        db.commit()
+        raise HTTPException(status_code=503, detail="No se pudo preparar el documento para preguntas.") from None
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No se pudo indexar el documento.") from None
+
+    response.headers["Cache-Control"] = "no-store"
+    return _read_model(document)
+
+
+@router.post(
+    "/ask",
+    response_model=AnswerRead,
+    dependencies=[Depends(require_frontend_origin)],
+)
+async def ask_documents(
+    request: AnswerRequest,
+    response: Response,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    db: Annotated[Session, Depends(get_db)],
+) -> AnswerRead:
+    if len(request.question) > RAG_MAX_QUERY_CHARS:
+        raise HTTPException(status_code=422, detail="La pregunta supera el límite permitido.")
+    if not rag.is_configured():
+        raise HTTPException(status_code=503, detail="El servicio de OpenAI no está configurado.")
+
+    try:
+        query_embedding = (await rag.create_embeddings([request.question]))[0]
+    except rag.RagProviderError:
+        raise HTTPException(status_code=503, detail="No se pudo buscar evidencia.") from None
+
+    distance = DocumentChunk.embedding.cosine_distance(query_embedding)
+    rows = db.execute(
+        select(
+            DocumentChunk.id,
+            DocumentChunk.document_id,
+            DocumentChunk.chunk_index,
+            DocumentChunk.content,
+            Document.filename,
+            distance.label("distance"),
+        )
+        .join(Document, Document.id == DocumentChunk.document_id)
+        .where(
+            Document.organization_id == principal.organization.id,
+            Document.rag_status == "ready",
+            distance <= 1 - RAG_MIN_SIMILARITY,
+        )
+        .order_by(distance, DocumentChunk.id)
+        .limit(RAG_MAX_CONTEXT_CHUNKS)
+    ).all()
+    if not rows:
+        response.headers["Cache-Control"] = "no-store"
+        return AnswerRead(
+            answer="No encuentro evidencia suficiente en los documentos de tu organización.",
+            abstained=True,
+            citations=[],
+        )
+
+    sources = [
+        {"filename": row.filename, "content": row.content}
+        for row in rows
+    ]
+    try:
+        draft = await rag.generate_answer(request.question, sources)
+    except rag.RagProviderError:
+        raise HTTPException(status_code=503, detail="No se pudo generar una respuesta.") from None
+
+    citation_numbers = draft["citation_numbers"]
+    if any(number < 1 or number > len(rows) for number in citation_numbers):
+        citation_numbers = []
+    citations = [
+        AnswerCitation(
+            document_id=rows[number - 1].document_id,
+            filename=rows[number - 1].filename,
+            chunk_index=rows[number - 1].chunk_index,
+            excerpt=rows[number - 1].content,
+        )
+        for number in citation_numbers
+    ]
+    abstained = not citations
+    response.headers["Cache-Control"] = "no-store"
+    return AnswerRead(
+        answer=(
+            "No encuentro evidencia suficiente en los documentos de tu organización."
+            if abstained
+            else draft["answer"]
+        ),
+        abstained=abstained,
+        citations=citations,
+    )
+
+
 @router.get("/{document_id}/download")
 def download_document(
     document_id: UUID,
@@ -194,7 +354,7 @@ def download_document(
     response_model=DocumentRead,
     dependencies=[Depends(require_frontend_origin)],
 )
-def reprocess_document(
+async def reprocess_document(
     document_id: UUID,
     response: Response,
     principal: Annotated[Principal, Depends(get_current_principal)],
@@ -213,8 +373,14 @@ def reprocess_document(
     except DocumentExtractionError:
         document.extracted_text = None
         document.extraction_status = "failed"
+    document.rag_status = "failed"
 
     try:
+        if document.extraction_status == "ready" and rag.is_configured():
+            try:
+                await _index_text(db, document)
+            except rag.RagProviderError:
+                document.rag_status = "failed"
         db.commit()
         db.refresh(document)
     except SQLAlchemyError:

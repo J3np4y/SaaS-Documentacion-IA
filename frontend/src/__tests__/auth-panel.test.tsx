@@ -69,6 +69,9 @@ describe("AuthPanel", () => {
       );
 
     render(<AuthPanel />);
+    expect(
+      await screen.findByText(/Si OpenAI está configurado, al indexar documentos/),
+    ).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     fireEvent.click(
       await screen.findByRole("button", { name: "Crear invitación de un solo uso" }),
@@ -258,8 +261,13 @@ describe("AuthPanel", () => {
       size_bytes: 32,
       created_at: "2026-10-09T10:00:00Z",
       extraction_status: "failed",
+      rag_status: "failed",
     };
-    const readyDocument = { ...failedDocument, extraction_status: "ready" };
+    const readyDocument = {
+      ...failedDocument,
+      extraction_status: "ready",
+      rag_status: "ready",
+    };
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(jsonResponse(owner))
@@ -277,6 +285,84 @@ describe("AuthPanel", () => {
       "/api/backend/organizations/me/documents/document-id/extract",
     );
     expect(fetchMock.mock.calls[3][1]?.method).toBe("POST");
-    expect(await screen.findByText(/Texto listo para buscar/)).toBeTruthy();
+    expect(await screen.findByText(/Listo para preguntas/)).toBeTruthy();
+  });
+
+  it("asks a question and displays validated document citations", async () => {
+    const document = {
+      id: "document-id",
+      filename: "manual.txt",
+      content_type: "text/plain",
+      size_bytes: 42,
+      created_at: "2026-10-09T10:00:00Z",
+      extraction_status: "ready",
+      rag_status: "ready",
+    };
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(owner))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([document]))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          answer: "El plazo es de 30 días.",
+          abstained: false,
+          citations: [
+            {
+              document_id: "document-id",
+              filename: "manual.txt",
+              chunk_index: 0,
+              excerpt: "El plazo de entrega es de 30 días.",
+            },
+          ],
+        }),
+      );
+
+    render(<AuthPanel />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    fireEvent.change(screen.getByLabelText("Pregunta sobre tus documentos"), {
+      target: { value: "¿Cuál es el plazo?" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Preguntar" }).closest("form")!);
+
+    expect(await screen.findByText("El plazo es de 30 días.")).toBeTruthy();
+    expect(screen.getByText("El plazo de entrega es de 30 días.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Abrir original" }).getAttribute("href")).toContain(
+      "/documents/document-id/download",
+    );
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/backend/organizations/me/documents/ask");
+    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
+      question: "¿Cuál es el plazo?",
+    });
+  });
+
+  it("lets the user explicitly index a previous document", async () => {
+    const document = {
+      id: "old-document",
+      filename: "old.txt",
+      content_type: "text/plain",
+      size_bytes: 20,
+      created_at: "2026-10-09T10:00:00Z",
+      extraction_status: "ready",
+      rag_status: "pending",
+    };
+    const indexed = { ...document, rag_status: "ready" };
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(owner))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([document]))
+      .mockResolvedValueOnce(jsonResponse(indexed))
+      .mockResolvedValueOnce(jsonResponse([indexed]));
+
+    render(<AuthPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Preparar para preguntas" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "/api/backend/organizations/me/documents/old-document/index",
+    );
+    expect(fetchMock.mock.calls[3][1]?.method).toBe("POST");
+    expect(await screen.findByText(/Listo para preguntas/)).toBeTruthy();
   });
 });

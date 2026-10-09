@@ -1,6 +1,8 @@
 """Document upload and tenant authorization checks against isolated PostgreSQL."""
 
+import json
 from io import BytesIO
+from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
@@ -10,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.main import app
-from app.services import document_storage
+from app.services import document_storage, rag
 
 ORIGIN = {"origin": "http://localhost:3000"}
 PASSWORD = "correct-horse-battery-staple"
@@ -19,6 +21,7 @@ PASSWORD = "correct-horse-battery-staple"
 @pytest.fixture()
 def document_client(migrated_database, tmp_path, monkeypatch):
     monkeypatch.setattr(document_storage, "DOCUMENT_STORAGE_DIR", tmp_path / "private-documents")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     def override_get_db():
         with Session(migrated_database) as session:
@@ -185,6 +188,188 @@ def test_failed_extraction_keeps_the_original_available_and_can_be_retried(docum
     assert download.content == b"%PDF-1.7\ninvalid"
 
 
+def test_existing_document_is_only_indexed_after_explicit_action(
+    document_client, monkeypatch
+) -> None:
+    register(document_client, "owner@example.com")
+    upload = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("manual.txt", b"Los contratos requieren firma.", "text/plain")},
+    )
+    document = upload.json()
+    assert document["rag_status"] == "pending"
+
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(texts):
+        assert texts == ["Los contratos requieren firma."]
+        return [[1.0] + [0.0] * 1535]
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    response = document_client.post(
+        f"/organizations/me/documents/{document['id']}/index", headers=ORIGIN
+    )
+
+    assert response.status_code == 200
+    assert response.json()["rag_status"] == "ready"
+
+
+def test_configured_new_upload_is_indexed_and_provider_failure_keeps_original(
+    document_client, monkeypatch
+) -> None:
+    register(document_client, "owner@example.com")
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(texts):
+        assert texts == ["Texto nuevo para preguntas."]
+        return [[1.0] + [0.0] * 1535]
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    uploaded = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("new.txt", b"Texto nuevo para preguntas.", "text/plain")},
+    )
+    assert uploaded.status_code == 201
+    assert uploaded.json()["rag_status"] == "ready"
+
+    async def provider_failure(_texts):
+        raise rag.RagProviderError("private provider detail")
+
+    monkeypatch.setattr(rag, "create_embeddings", provider_failure)
+    failed = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("offline.txt", b"Texto guardado aunque falle OpenAI.", "text/plain")},
+    )
+    assert failed.status_code == 201
+    assert failed.json()["rag_status"] == "failed"
+    assert document_client.get(
+        f"/organizations/me/documents/{failed.json()['id']}/download"
+    ).content == b"Texto guardado aunque falle OpenAI."
+
+
+def test_question_retrieves_only_current_organizations_sources(document_client, monkeypatch) -> None:
+    register(document_client, "owner@example.com")
+    upload = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("contrato.txt", b"El contrato vence en diciembre.", "text/plain")},
+    )
+    document_id = upload.json()["id"]
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(_texts):
+        return [[1.0] + [0.0] * 1535]
+
+    async def generate(_question, sources):
+        assert sources == [
+            {"filename": "contrato.txt", "content": "El contrato vence en diciembre."}
+        ]
+        return {"answer": "Vence en diciembre.", "citation_numbers": [1]}
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    monkeypatch.setattr(rag, "generate_answer", generate)
+    # Seed the vector through the authorized indexing endpoint.
+    indexed = document_client.post(
+        f"/organizations/me/documents/{document_id}/index", headers=ORIGIN
+    )
+    assert indexed.status_code == 200
+    answer = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "¿Cuándo vence el contrato?"},
+    )
+
+    other_client = TestClient(app)
+    register(other_client, "other@example.com")
+    other_answer = other_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "¿Cuándo vence el contrato?"},
+    )
+
+    assert answer.status_code == 200
+    assert answer.json()["answer"] == "Vence en diciembre."
+    assert answer.json()["citations"] == [
+        {
+            "document_id": document_id,
+            "filename": "contrato.txt",
+            "chunk_index": 0,
+            "excerpt": "El contrato vence en diciembre.",
+        }
+    ]
+    assert other_answer.status_code == 200
+    assert other_answer.json()["abstained"] is True
+    assert other_answer.json()["citations"] == []
+
+
+def test_question_abstains_without_evidence_and_rejects_long_input(
+    document_client, monkeypatch
+) -> None:
+    register(document_client, "owner@example.com")
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(_texts):
+        return [[1.0] + [0.0] * 1535]
+
+    async def unexpected_generation(*_args):
+        pytest.fail("Generation must not run without retrieved evidence")
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    monkeypatch.setattr(rag, "generate_answer", unexpected_generation)
+    no_evidence = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "Pregunta sin documentos"},
+    )
+    too_long = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "x" * 1001},
+    )
+
+    assert no_evidence.status_code == 200
+    assert no_evidence.json()["abstained"] is True
+    assert "No encuentro evidencia" in no_evidence.json()["answer"]
+    assert too_long.status_code == 422
+
+
+def test_invalid_model_citation_is_replaced_with_abstention(
+    document_client, monkeypatch
+) -> None:
+    register(document_client, "owner@example.com")
+    upload = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("manual.txt", b"El importe es 25 euros.", "text/plain")},
+    )
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    async def embeddings(_texts):
+        return [[1.0] + [0.0] * 1535]
+
+    async def invalid_citation(_question, _sources):
+        return {"answer": "La cantidad es 25.", "citation_numbers": [2]}
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+    monkeypatch.setattr(rag, "generate_answer", invalid_citation)
+    indexed = document_client.post(
+        f"/organizations/me/documents/{upload.json()['id']}/index", headers=ORIGIN
+    )
+    assert indexed.status_code == 200
+
+    answer = document_client.post(
+        "/organizations/me/documents/ask",
+        headers=ORIGIN,
+        json={"question": "¿Cuál es el importe?"},
+    )
+    assert answer.status_code == 200
+    assert answer.json()["abstained"] is True
+    assert answer.json()["citations"] == []
+
+
 def test_upload_accepts_a_file_at_the_exact_size_limit(document_client) -> None:
     register(document_client, "limit@example.com")
     content = b"x" * (10 * 1024 * 1024)
@@ -222,6 +407,85 @@ def test_upload_rejects_invalid_or_oversized_files(
     assert response.status_code == expected_status
     assert document_client.get("/organizations/me/documents").json() == []
     assert not document_storage.DOCUMENT_STORAGE_DIR.exists()
+
+
+def test_rag_evaluation_dataset_measures_retrieval_citations_and_abstention(
+    document_client, monkeypatch
+) -> None:
+    dataset_path = Path(__file__).parent / "fixtures" / "rag_evaluation.json"
+    dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
+    register(document_client, "evaluation@example.com")
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+
+    vectors = {}
+
+    async def embeddings(texts):
+        return [vectors[text] for text in texts]
+
+    monkeypatch.setattr(rag, "create_embeddings", embeddings)
+
+    for index, document in enumerate(dataset["documents"]):
+        vector = [0.0] * 1536
+        vector[index] = 1.0
+        vectors[document["text"]] = vector
+        upload = document_client.post(
+            "/organizations/me/documents",
+            headers=ORIGIN,
+            files={
+                "file": (
+                    document["filename"],
+                    document["text"].encode(),
+                    "text/plain",
+                )
+            },
+        )
+        assert upload.status_code == 201
+        assert upload.json()["rag_status"] == "ready"
+
+    for index, case in enumerate(
+        case for case in dataset["cases"] if case["expected_source"] is not None
+    ):
+        vector = [0.0] * 1536
+        vector[index] = 1.0
+        vectors[case["question"]] = vector
+    unrelated_vector = [0.0] * 1536
+    unrelated_vector[len(dataset["documents"])] = 1.0
+    vectors[
+        next(case["question"] for case in dataset["cases"] if case["expected_source"] is None)
+    ] = unrelated_vector
+
+    async def answer(question, sources):
+        case = next(item for item in dataset["cases"] if item["question"] == question)
+        assert [
+            (source["filename"], source["content"]) for source in sources
+        ] == [(case["expected_source"], case["expected_excerpt"])]
+        return {"answer": case["expected_answer"], "citation_numbers": [1]}
+
+    monkeypatch.setattr(rag, "generate_answer", answer)
+
+    measured = {"retrieval": 0, "citations": 0, "abstentions": 0}
+    for case in dataset["cases"]:
+        response = document_client.post(
+            "/organizations/me/documents/ask",
+            headers=ORIGIN,
+            json={"question": case["question"]},
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["answer"] == case["expected_answer"]
+        assert result["abstained"] is case["expected_abstained"]
+
+        if case["expected_abstained"]:
+            assert result["citations"] == []
+            measured["abstentions"] += 1
+        else:
+            citation = result["citations"][0]
+            assert citation["filename"] == case["expected_source"]
+            assert citation["excerpt"] == case["expected_excerpt"]
+            measured["retrieval"] += 1
+            measured["citations"] += 1
+
+    assert measured == {"retrieval": 2, "citations": 2, "abstentions": 1}
 
 
 def test_documents_are_scoped_to_membership_and_organization(document_client) -> None:

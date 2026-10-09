@@ -55,7 +55,11 @@ El backend asigna la organización desde la sesión, no desde campos confiados a
 
 ## Extracción e ingesta (Hito 6 implementado)
 
-El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estándar y de TXT como UTF-8. El texto se guarda en PostgreSQL junto a su estado; una columna generada y un índice GIN permiten búsqueda de texto completo con la configuración española. Las consultas se limitan a la organización de la sesión. El procesamiento es síncrono y acotado; si falla, se conserva el original y se puede reintentar. OCR, embeddings y RAG quedan fuera del Hito 6. El recorrido y las limitaciones están en [hito-06.md](hito-06.md).
+El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estándar y de TXT como UTF-8. El texto se guarda en PostgreSQL junto a su estado; una columna generada y un índice GIN permiten búsqueda de texto completo con la configuración española. Las consultas se limitan a la organización de la sesión. El procesamiento es síncrono y acotado; si falla, se conserva el original y se puede reintentar. OCR y embeddings quedan fuera del Hito 6. El recorrido y las limitaciones están en [hito-06.md](hito-06.md).
+
+## RAG, citas y evaluación (Hito 7 implementado; CI pendiente)
+
+La aplicación usa la API de OpenAI para embeddings y generación, y PostgreSQL con pgvector para recuperar fragmentos de la organización autenticada. El texto del documento, la pregunta y el contexto se envían a OpenAI cuando el proveedor está configurado. Los documentos antiguos requieren indexación explícita; los nuevos se indexan durante la carga solo con una clave configurada. Las decisiones de modelos, fragmentación, citas, límites y privacidad están en [ADR 0005](adr/0005-rag-models-and-retrieval.md) y [hito-07.md](hito-07.md). La evaluación local usa vectores y respuestas sintéticos y no sustituye una medición de calidad del modelo real.
 
 ## Dirección objetivo
 
@@ -65,7 +69,7 @@ Navegador -> Next.js / TypeScript -> FastAPI
                                       -> PostgreSQL (organizaciones y metadatos)
                                       -> almacenamiento de objetos (ficheros originales)
                                       -> pgvector (fragmentos y embeddings, hito RAG)
-                                      -> proveedor LLM (tras decisión documentada)
+                                      -> proveedor LLM (OpenAI, según ADR 0005)
 ```
 
 ## Límites de diseño y seguridad
@@ -78,5 +82,5 @@ Navegador -> Next.js / TypeScript -> FastAPI
 - El almacenamiento de documentos será privado y aislado por organización; acceso y borrado deberán autorizarse en el servidor.
 - Secretos y URL de base de datos solo se leerán del entorno; no se registrarán en logs.
 - Las consultas usarán parámetros/ORM, y los metadatos se validarán antes de persistir.
-- No se integra proveedor LLM; extracción y búsqueda textual se abordan en el Hito 6, mientras que embeddings y RAG quedan para el Hito 7.
+- Las solicitudes RAG envían documentos indexados, preguntas y contexto recuperado a OpenAI; no se deben usar datos sensibles sin aprobación explícita.
 - Hito 4 no incorpora correo, verificación de email, recuperación de contraseña, MFA ni rate limiting distribuido; no considerar el login abierto listo para producción.

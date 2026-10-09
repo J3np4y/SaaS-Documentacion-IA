@@ -21,6 +21,13 @@ DOCUMENT_STORAGE_DIR = Path(
         str(Path(__file__).resolve().parents[3] / ".data" / "documents"),
     )
 ).expanduser()
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
+RAG_EMBEDDING_DIMENSIONS = 1536
+RAG_MAX_QUERY_CHARS = 1000
+RAG_MAX_CONTEXT_CHUNKS = 5
+RAG_MIN_SIMILARITY = 0.45
+RAG_MAX_COMPLETION_TOKENS = 500
 
 
 def _postgres_url(database: str, port: int) -> str | None:

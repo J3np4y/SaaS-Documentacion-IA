@@ -89,3 +89,14 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - `frontend`: 22 pruebas, lint, typecheck y build de producción aprobados.
 - La suite backend mantiene una advertencia Starlette/httpx deprecada; no afectó los resultados.
 - GitHub Actions aprobada en el commit `73d073af8974a085d03cd860bbfdb01e5bef9707`: [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). Los jobs de backend (Ruff y pytest con PostgreSQL) y frontend (lint, typecheck, tests y build) finalizaron correctamente.
+
+## Hito 7 — RAG, citas y evaluación local
+
+- Backend: `pytest -q` aprobó 71 pruebas contra PostgreSQL desechable con pgvector. Se verificaron aislamiento por organización, indexación, persistencia ante fallos del proveedor, citas, abstención y validación de respuestas.
+- Evaluación determinista: 2/2 consultas recuperaron la fuente esperada y produjeron citas correctas; 1/1 consulta sin evidencia se abstuvo. Los vectores y respuestas son sintéticos; no miden la calidad de OpenAI.
+- Seguridad del prompt: una prueba confirma que el texto adversarial de un documento permanece en el mensaje de evidencia del usuario, separado de las instrucciones de sistema. Esto no demuestra inmunidad total a prompt injection.
+- Ruff aprobado.
+- Migraciones PostgreSQL/pgvector verificadas con `upgrade head` → `downgrade base` → `upgrade head`, incluida la extensión vectorial y el índice HNSW.
+- Frontend: 25 pruebas, lint, typecheck y build de producción aprobados.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx deprecada continúa sin afectar la suite.
+- GitHub Actions aún pendiente para los cambios de este hito.

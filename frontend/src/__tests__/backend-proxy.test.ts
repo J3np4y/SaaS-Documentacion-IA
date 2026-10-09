@@ -145,4 +145,29 @@ describe("backend route proxy", () => {
       new URL("http://127.0.0.1:8000/organizations/me/documents/search?q=contrato"),
     );
   });
+
+  it("allows only the document index endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ rag_status: "ready" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(
+      "http://localhost:3000/api/backend/organizations/me/documents/123e4567-e89b-12d3-a456-426614174000/index",
+      { method: "POST", headers: { origin: "http://localhost:3000" } },
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({
+        path: ["organizations", "me", "documents", "123e4567-e89b-12d3-a456-426614174000", "index"],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0][0]).toEqual(
+      new URL("http://127.0.0.1:8000/organizations/me/documents/123e4567-e89b-12d3-a456-426614174000/index"),
+    );
+  });
 });

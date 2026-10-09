@@ -4,7 +4,7 @@ type RouteContext = { params: Promise<{ path: string[] }> };
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 const API_TIMEOUT_MS = 5_000;
-const DOCUMENT_REQUEST_TIMEOUT_MS = 60_000;
+const DOCUMENT_REQUEST_TIMEOUT_MS = 90_000;
 const MAX_UPLOAD_REQUEST_BYTES = 10 * 1024 * 1024 + 64 * 1024;
 
 function isAllowedPath(path: string[]): boolean {
@@ -12,8 +12,8 @@ function isAllowedPath(path: string[]): boolean {
   return (
     ["auth/register", "auth/login", "auth/logout", "auth/me", "organizations/me/members",
       "organizations/me/invitations", "organizations/me/documents",
-      "organizations/me/documents/search"].includes(joined) ||
-    /^organizations\/me\/documents\/[0-9a-f-]{36}(\/(download|extract))?$/i.test(joined) ||
+      "organizations/me/documents/search", "organizations/me/documents/ask"].includes(joined) ||
+    /^organizations\/me\/documents\/[0-9a-f-]{36}(\/(download|extract|index))?$/i.test(joined) ||
     /^organizations\/me\/members\/[0-9a-f-]{36}$/i.test(joined)
   );
 }
