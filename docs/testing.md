@@ -67,7 +67,7 @@ La verificación local del hito está completa; no se ha ejecutado una CI de Git
 
 El alcance aprobado está en [hito-05.md](hito-05.md) y la decisión de almacenamiento en [ADR 0004](adr/0004-document-storage.md).
 
-### Hito 5 — carga inicial: verificación local aprobada
+### Hito 5 — carga inicial: verificaciones locales y CI aprobadas
 
 Alcance acordado: PDF, DOCX y TXT, máximo 10 MiB por archivo, almacenamiento local privado, permisos iguales para `owner` y `member`, borrado físico, sin cuota total por organización ni análisis antimalware.
 
@@ -76,4 +76,16 @@ Alcance acordado: PDF, DOCX y TXT, máximo 10 MiB por archivo, almacenamiento lo
 - Flujo funcional adicional contra SQLite temporal: registro, carga, listado, descarga con encabezados seguros y borrado físico pasaron. Esto comprueba el flujo HTTP, pero no sustituye las pruebas de integración ni la migración en PostgreSQL.
 - Migraciones PostgreSQL verificadas con ciclo `upgrade head` → `downgrade base` → `upgrade head`.
 - La primera ejecución encontró un archivo PDF aceptado con extensión TXT; se corrigió la validación y las 48 pruebas pasaron al repetir la suite completa.
-- No se ha ejecutado CI de GitHub para esta rama.
+- GitHub Actions aprobada en el commit `27db9cca4265eff5f72c2a1bd783128482fd9bea`: [ejecución 37920779623](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37920779623). Los jobs `backend` (Ruff y pytest con PostgreSQL) y `frontend` (lint, typecheck, tests y build) finalizaron correctamente.
+
+La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF llamado `.txt`; la corrección y prueba de regresión están incluidas en `27db9cc`.
+
+## Hito 6 — extracción, ingesta y búsqueda textual
+
+### Resultados locales observados
+
+- `backend`: `pytest -q` aprobó 61 pruebas contra PostgreSQL desechable, incluyendo extracción de PDF/DOCX/TXT, límites, carga conservada tras fallo, reprocesamiento y búsqueda aislada por organización. Ruff aprobado.
+- Migración PostgreSQL verificada con `upgrade head` → `downgrade base` → `upgrade head`, incluyendo la columna generada y el índice GIN de búsqueda española.
+- `frontend`: 22 pruebas, lint, typecheck y build de producción aprobados.
+- La suite backend mantiene una advertencia Starlette/httpx deprecada; no afectó los resultados.
+- CI de GitHub para Hito 6: pendiente de la publicación de estos cambios.

@@ -47,11 +47,15 @@ def register(client: TestClient, email: str) -> dict:
     return response.json()
 
 
-def docx_content() -> bytes:
+def docx_content(text: str = "Documento de aprendizaje") -> bytes:
     result = BytesIO()
     with ZipFile(result, "w", ZIP_DEFLATED) as archive:
         archive.writestr("[Content_Types].xml", "<Types/>")
-        archive.writestr("word/document.xml", "<document/>")
+        archive.writestr(
+            "word/document.xml",
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            f"<w:body><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:body></w:document>",
+        )
     return result.getvalue()
 
 
@@ -69,6 +73,7 @@ def test_upload_list_download_and_permanently_delete_document(document_client) -
     assert document["filename"] == "manual.txt"
     assert document["content_type"] == "text/plain"
     assert document["size_bytes"] == len(content)
+    assert document["extraction_status"] == "ready"
     assert uploaded.headers["cache-control"] == "no-store"
     assert len(list((document_storage.DOCUMENT_STORAGE_DIR).iterdir())) == 1
 
@@ -95,14 +100,16 @@ def test_upload_list_download_and_permanently_delete_document(document_client) -
 
 
 @pytest.mark.parametrize(
-    ("filename", "content"),
+    ("filename", "content", "extraction_status"),
     [
-        ("manual.pdf", b"%PDF-1.7\ncontent"),
-        ("manual.docx", docx_content()),
-        ("manual.txt", "Texto UTF-8: ñ".encode()),
+        ("manual.pdf", "%PDF-1.7\ncontenido dañado".encode(), "failed"),
+        ("manual.docx", docx_content(), "ready"),
+        ("manual.txt", "Texto UTF-8: ñ".encode(), "ready"),
     ],
 )
-def test_upload_accepts_the_agreed_file_types(document_client, filename, content) -> None:
+def test_upload_accepts_the_agreed_file_types(
+    document_client, filename, content, extraction_status
+) -> None:
     register(document_client, f"{filename.replace('.', '-')}@example.com")
     response = document_client.post(
         "/organizations/me/documents",
@@ -111,6 +118,71 @@ def test_upload_accepts_the_agreed_file_types(document_client, filename, content
     )
     assert response.status_code == 201
     assert response.json()["filename"] == filename
+    assert response.json()["extraction_status"] == extraction_status
+
+
+def test_search_returns_only_documents_from_the_current_organization(document_client) -> None:
+    register(document_client, "owner@example.com")
+    uploaded = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={
+            "file": (
+                "contrato.txt",
+                b"Los contratos de vivienda requieren una firma.",
+                "text/plain",
+            )
+        },
+    )
+    assert uploaded.status_code == 201
+
+    other_client = TestClient(app)
+    register(other_client, "other@example.com")
+
+    response = document_client.get(
+        "/organizations/me/documents/search", params={"q": "contrato"}
+    )
+    other_response = other_client.get(
+        "/organizations/me/documents/search", params={"q": "contrato"}
+    )
+
+    assert response.status_code == 200
+    assert [result["filename"] for result in response.json()] == ["contrato.txt"]
+    assert response.json()[0]["id"] == uploaded.json()["id"]
+    assert "contrat" in response.json()[0]["snippet"].lower()
+    assert response.headers["cache-control"] == "no-store"
+    assert other_response.json() == []
+
+
+def test_search_requires_a_nonblank_query(document_client) -> None:
+    register(document_client, "owner@example.com")
+    response = document_client.get(
+        "/organizations/me/documents/search", params={"q": "   "}
+    )
+    assert response.status_code == 400
+
+
+def test_failed_extraction_keeps_the_original_available_and_can_be_retried(document_client) -> None:
+    register(document_client, "owner@example.com")
+    upload = document_client.post(
+        "/organizations/me/documents",
+        headers=ORIGIN,
+        files={"file": ("broken.pdf", b"%PDF-1.7\ninvalid", "application/pdf")},
+    )
+    document = upload.json()
+    assert document["extraction_status"] == "failed"
+
+    retry = document_client.post(
+        f"/organizations/me/documents/{document['id']}/extract", headers=ORIGIN
+    )
+    download = document_client.get(
+        f"/organizations/me/documents/{document['id']}/download"
+    )
+
+    assert retry.status_code == 200
+    assert retry.json()["extraction_status"] == "failed"
+    assert download.status_code == 200
+    assert download.content == b"%PDF-1.7\ninvalid"
 
 
 def test_upload_accepts_a_file_at_the_exact_size_limit(document_client) -> None:

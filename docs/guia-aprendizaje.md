@@ -6,12 +6,12 @@ Este repositorio está pensado para aprender a construir una aplicación web pas
 
 1. Lee la introducción y las instrucciones para arrancar en el [README](../README.md).
 2. Revisa la [hoja de ruta](roadmap.md) para saber qué partes están terminadas y cuáles son propuestas.
-3. Elige el hito que quieras estudiar. Si estás empezando, sigue el orden disponible: [Hito 2](hito-02.md), [Hito 3](hito-03.md), [Hito 4](hito-04.md) y [Hito 5](hito-05.md).
+3. Elige el hito que quieras estudiar. Si estás empezando, sigue el orden disponible: [Hito 2](hito-02.md), [Hito 3](hito-03.md), [Hito 4](hito-04.md), [Hito 5](hito-05.md) y [Hito 6](hito-06.md).
 4. Consulta la [arquitectura](architecture.md) cuando quieras ver cómo se conectan las partes y la [estrategia de pruebas](testing.md) para distinguir las comprobaciones previstas de las que ya se ejecutaron.
 
 El Hito 1 figura como completado en la hoja de ruta, pero no tiene un documento propio; su contexto inicial está en el README y en el [ADR 0001](adr/0001-base-tecnica.md).
 
-Los hitos anteriores al actual sirven como material de estudio: no es necesario volver a implementar lo que ya está completado. El Hito 5 está planificado; sus alternativas y preguntas abiertas no son decisiones aprobadas.
+Los hitos anteriores al actual sirven como material de estudio: no es necesario volver a implementar lo que ya está completado. El Hito 6 está iniciado; sus decisiones abiertas no son requisitos aprobados.
 
 ## Un ciclo corto para cada paso
 

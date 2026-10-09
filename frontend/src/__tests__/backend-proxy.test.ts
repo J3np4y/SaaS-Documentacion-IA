@@ -123,4 +123,26 @@ describe("backend route proxy", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
+
+  it("forwards authorized document search paths and query parameters", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new NextRequest(
+      "http://localhost:3000/api/backend/organizations/me/documents/search?q=contrato",
+    );
+
+    const response = await GET(request, {
+      params: Promise.resolve({ path: ["organizations", "me", "documents", "search"] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0][0]).toEqual(
+      new URL("http://127.0.0.1:8000/organizations/me/documents/search?q=contrato"),
+    );
+  });
 });

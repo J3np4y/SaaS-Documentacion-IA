@@ -18,7 +18,9 @@ type DocumentItem = {
   content_type: string;
   size_bytes: number;
   created_at: string;
+  extraction_status: "pending" | "ready" | "failed";
 };
+type DocumentSearchResult = Pick<DocumentItem, "id" | "filename"> & { snippet: string };
 type AuthMode = "register" | "login";
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -55,6 +57,8 @@ export function AuthPanel() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentBusy, setDocumentBusy] = useState(false);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchResults, setSearchResults] = useState<DocumentSearchResult[] | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteExpires, setInviteExpires] = useState("");
   const [memberRoles, setMemberRoles] = useState<Record<string, Member["role"]>>({});
@@ -217,14 +221,54 @@ export function AuthPanel() {
     }
     setDocumentBusy(true);
     try {
-      await requestJson<DocumentItem>("/organizations/me/documents", {
+      const uploaded = await requestJson<DocumentItem>("/organizations/me/documents", {
         method: "POST",
         body: new FormData(form),
       });
       form.reset();
+      if (uploaded.extraction_status === "failed") {
+        setError("El documento se guardó, pero no se pudo extraer su texto. El original sigue disponible.");
+      }
       await loadDocuments();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo cargar el documento.");
+    } finally {
+      setDocumentBusy(false);
+    }
+  }
+
+  async function searchDocuments(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = String(new FormData(event.currentTarget).get("q") ?? "").trim();
+    setError("");
+    setSearchResults(null);
+    setSearchBusy(true);
+    try {
+      const results = await requestJson<DocumentSearchResult[]>(
+        `/organizations/me/documents/search?q=${encodeURIComponent(query)}`,
+      );
+      setSearchResults(results);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo buscar en los documentos.");
+    } finally {
+      setSearchBusy(false);
+    }
+  }
+
+  async function reprocessDocument(document: DocumentItem) {
+    setError("");
+    setDocumentBusy(true);
+    try {
+      const updated = await requestJson<DocumentItem>(
+        `/organizations/me/documents/${document.id}/extract`,
+        { method: "POST" },
+      );
+      await loadDocuments();
+      if (updated.extraction_status === "failed") {
+        setError("No se pudo extraer texto del documento. El original sigue disponible.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo procesar el documento.");
     } finally {
       setDocumentBusy(false);
     }
@@ -335,6 +379,39 @@ export function AuthPanel() {
                 {documentBusy ? "Procesando…" : "Cargar documento"}
               </button>
             </form>
+            <form className="document-form" onSubmit={searchDocuments}>
+              <label>
+                Buscar en los documentos
+                <input name="q" type="search" maxLength={200} required />
+              </label>
+              <button className="button button--quiet" type="submit" disabled={searchBusy}>
+                {searchBusy ? "Buscando…" : "Buscar"}
+              </button>
+            </form>
+            {searchResults !== null && (
+              <div>
+                {searchResults.length === 0 ? (
+                  <p role="status">No se encontraron coincidencias.</p>
+                ) : (
+                  <ul className="document-list" aria-label="Resultados de búsqueda">
+                    {searchResults.map((result) => (
+                      <li key={result.id}>
+                        <span>
+                          <strong>{result.filename}</strong>
+                          <small>{result.snippet}</small>
+                        </span>
+                        <a
+                          className="button button--quiet"
+                          href={`/api/backend/organizations/me/documents/${result.id}/download`}
+                        >
+                          Descargar
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             {documentsLoading ? (
               <p role="status" aria-live="polite">Cargando documentos…</p>
             ) : documents.length === 0 ? (
@@ -348,6 +425,12 @@ export function AuthPanel() {
                       <small>
                         {document.content_type} · {(document.size_bytes / (1024 * 1024)).toFixed(2)} MiB
                         {" · "}Cargado {new Date(document.created_at).toLocaleDateString()}
+                        {" · "}
+                        {document.extraction_status === "ready"
+                          ? "Texto listo para buscar"
+                          : document.extraction_status === "failed"
+                            ? "No se pudo extraer texto"
+                            : "Pendiente de extracción"}
                       </small>
                     </span>
                     <a
@@ -364,6 +447,16 @@ export function AuthPanel() {
                     >
                       Borrar
                     </button>
+                    {document.extraction_status !== "ready" && (
+                      <button
+                        className="button button--quiet"
+                        type="button"
+                        disabled={documentBusy}
+                        onClick={() => void reprocessDocument(document)}
+                      >
+                        Reintentar extracción
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

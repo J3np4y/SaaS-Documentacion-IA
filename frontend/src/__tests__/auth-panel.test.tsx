@@ -217,4 +217,66 @@ describe("AuthPanel", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
+
+  it("searches extracted text and displays organization-scoped results", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(owner))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            id: "document-id",
+            filename: "contrato.txt",
+            snippet: "Los <b>contratos</b> requieren firma.",
+          },
+        ]),
+      );
+
+    render(<AuthPanel />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    fireEvent.change(screen.getByLabelText("Buscar en los documentos"), {
+      target: { value: "contrato" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Buscar" }).closest("form")!);
+
+    expect(await screen.findByText("Los <b>contratos</b> requieren firma.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Descargar" }).getAttribute("href")).toContain(
+      "/documents/document-id/download",
+    );
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "/api/backend/organizations/me/documents/search?q=contrato",
+    );
+  });
+
+  it("shows extraction failures and lets the user retry processing", async () => {
+    const failedDocument = {
+      id: "document-id",
+      filename: "damaged.pdf",
+      content_type: "application/pdf",
+      size_bytes: 32,
+      created_at: "2026-10-09T10:00:00Z",
+      extraction_status: "failed",
+    };
+    const readyDocument = { ...failedDocument, extraction_status: "ready" };
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(owner))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([failedDocument]))
+      .mockResolvedValueOnce(jsonResponse(readyDocument))
+      .mockResolvedValueOnce(jsonResponse([readyDocument]));
+
+    render(<AuthPanel />);
+    expect(await screen.findByText(/No se pudo extraer texto/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar extracción" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "/api/backend/organizations/me/documents/document-id/extract",
+    );
+    expect(fetchMock.mock.calls[3][1]?.method).toBe("POST");
+    expect(await screen.findByText(/Texto listo para buscar/)).toBeTruthy();
+  });
 });

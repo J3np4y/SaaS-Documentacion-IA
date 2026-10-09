@@ -4,14 +4,14 @@ Aplicación web para que equipos colaboren alrededor de su documentación y, en 
 
 Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte se construye entendiendo primero el problema, los conceptos y las decisiones de diseño. La meta no es producir código a ciegas, sino aprender cómo las piezas de una aplicación real se relacionan y cómo tomar decisiones técnicas con criterio.
 
-> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos y carga/gestión inicial de documentos. Extracción, búsqueda y respuestas generadas por IA todavía no están implementadas. Es un prototipo educativo, no un servicio listo para producción.
+> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones, permisos básicos, gestión de documentos, extracción de texto y búsqueda textual en español. Las respuestas generadas por IA todavía no están implementadas. Es un prototipo educativo, no un servicio listo para producción.
 
 ## Cómo funciona
 
 1. Una persona crea una cuenta y una organización, o se incorpora a una organización mediante una invitación.
 2. Inicia sesión y usa la aplicación dentro de su organización. Los permisos determinan qué acciones puede realizar cada integrante.
 3. El backend valida la identidad, los permisos y la organización de cada solicitud; el frontend presenta el flujo y sus estados.
-4. La carga de documentos se está desarrollando con almacenamiento local privado; extracción, búsqueda y respuestas de IA vinculadas a fuentes quedan para etapas posteriores.
+4. La carga y gestión inicial de documentos usa almacenamiento local privado. El backend extrae texto durante la carga y permite buscarlo dentro de la organización; las respuestas de IA vinculadas a fuentes llegarán después.
 
 ## Aprendizaje guiado
 

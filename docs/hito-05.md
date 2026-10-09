@@ -1,8 +1,8 @@
 # Hito 5 — carga y gestión de documentos
 
-## Estado: completado; verificaciones locales aprobadas
+## Estado: completado; verificaciones locales y CI aprobadas
 
-El Hito 4 proporciona identidad, sesión y aislamiento por organización. Este hito añade el recorrido de carga y gestión sin extracción, búsqueda ni IA. Las comprobaciones locales y sus limitaciones están registradas en [testing.md](testing.md).
+El Hito 4 proporciona identidad, sesión y aislamiento por organización. Este hito añade el recorrido de carga y gestión sin extracción, búsqueda ni IA. Las comprobaciones locales, de CI y sus limitaciones están registradas en [testing.md](testing.md).
 
 ## Objetivo de aprendizaje
 

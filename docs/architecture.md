@@ -4,7 +4,7 @@ Esta página muestra las piezas y cómo se comunican; no es necesario aprender t
 
 ## Estado actual — persistencia, acceso y gestión de documentos
 
-FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para las rutas de autenticación y documentos. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos de documentos; los bytes se guardan en un directorio privado configurado por `DOCUMENT_STORAGE_DIR`.
+FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para las rutas de autenticación y documentos. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones, metadatos y texto extraído con un índice de búsqueda en español; los bytes se guardan en un directorio privado configurado por `DOCUMENT_STORAGE_DIR`.
 
 ```text
 Navegador -> Next.js (página renderizada en servidor) -> FastAPI /health
@@ -25,7 +25,7 @@ Alembic -> migraciones versionadas de esquema
 
 FastAPI conserva `/health` como comprobación de vida independiente de la base de datos y expone `/ready` como comprobación de preparación que verifica una conexión real a PostgreSQL. Si la base de datos no está disponible, `/ready` responderá con estado no disponible sin revelar detalles de conexión.
 
-El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. El Hito 5 añade la gestión de documentos con bytes en un directorio local privado.
+El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. El Hito 5 añadió la gestión de documentos con bytes en un directorio local privado.
 
 ## Acceso y permisos (Hito 4)
 
@@ -51,7 +51,11 @@ Navegador -> Next.js -> FastAPI
                          -> almacenamiento privado: bytes originales
 ```
 
-El principio ya establecido es no guardar binarios en PostgreSQL. El backend asignará la organización desde la sesión, no desde campos confiados al navegador; las claves de almacenamiento serán generadas por el servidor y no derivadas de rutas/nombres proporcionados por el usuario. La ubicación de almacenamiento concreta, formatos, límites y política de acceso/retención siguen pendientes de acuerdo. No se expondrán enlaces públicos por defecto. El plan y sus decisiones abiertas están en [hito-05.md](hito-05.md) y [ADR 0004](adr/0004-document-storage.md).
+El backend asigna la organización desde la sesión, no desde campos confiados al navegador; las claves de almacenamiento las genera el servidor y no se derivan de rutas/nombres proporcionados por el usuario. Los formatos, límites, permisos y política de retención del prototipo están acordados en [hito-05.md](hito-05.md) y [ADR 0004](adr/0004-document-storage.md). No se exponen enlaces públicos por defecto.
+
+## Extracción e ingesta (Hito 6 implementado)
+
+El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estándar y de TXT como UTF-8. El texto se guarda en PostgreSQL junto a su estado; una columna generada y un índice GIN permiten búsqueda de texto completo con la configuración española. Las consultas se limitan a la organización de la sesión. El procesamiento es síncrono y acotado; si falla, se conserva el original y se puede reintentar. OCR, embeddings y RAG quedan fuera del Hito 6. El recorrido y las limitaciones están en [hito-06.md](hito-06.md).
 
 ## Dirección objetivo
 
@@ -74,5 +78,5 @@ Navegador -> Next.js / TypeScript -> FastAPI
 - El almacenamiento de documentos será privado y aislado por organización; acceso y borrado deberán autorizarse en el servidor.
 - Secretos y URL de base de datos solo se leerán del entorno; no se registrarán en logs.
 - Las consultas usarán parámetros/ORM, y los metadatos se validarán antes de persistir.
-- No se integra proveedor LLM; extracción, indexación y RAG quedan fuera del Hito 5.
+- No se integra proveedor LLM; extracción y búsqueda textual se abordan en el Hito 6, mientras que embeddings y RAG quedan para el Hito 7.
 - Hito 4 no incorpora correo, verificación de email, recuperación de contraseña, MFA ni rate limiting distribuido; no considerar el login abierto listo para producción.

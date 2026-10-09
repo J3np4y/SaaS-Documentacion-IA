@@ -4,16 +4,17 @@ import logging
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.auth import Principal, get_current_principal, require_frontend_origin
 from app.core.database import get_db
 from app.models import Document
-from app.schemas.document import DocumentRead
+from app.schemas.document import DocumentRead, DocumentSearchResult
+from app.services.document_processing import DocumentExtractionError, extract_document_text
 from app.services.document_storage import (
     MAX_DOCUMENT_SIZE_BYTES,
     InvalidDocument,
@@ -35,6 +36,7 @@ def _read_model(document: Document) -> DocumentRead:
         content_type=document.content_type,
         size_bytes=document.size_bytes,
         created_at=document.created_at,
+        extraction_status=document.extraction_status,
     )
 
 
@@ -71,6 +73,13 @@ async def upload_document(
     except InvalidDocument as error:
         raise HTTPException(status_code=400, detail=str(error)) from None
 
+    try:
+        extracted_text = extract_document_text(content_type, content)
+        extraction_status = "ready"
+    except DocumentExtractionError:
+        extracted_text = None
+        extraction_status = "failed"
+
     storage_key = uuid4().hex
     try:
         store_object(storage_key, content)
@@ -84,6 +93,8 @@ async def upload_document(
         content_type=content_type,
         storage_key=storage_key,
         size_bytes=len(content),
+        extracted_text=extracted_text,
+        extraction_status=extraction_status,
     )
     db.add(document)
     try:
@@ -120,6 +131,42 @@ def list_documents(
     return [_read_model(document) for document in documents]
 
 
+@router.get("/search", response_model=list[DocumentSearchResult])
+def search_documents(
+    query: Annotated[str, Query(min_length=1, max_length=200, alias="q")],
+    response: Response,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[DocumentSearchResult]:
+    if not query.strip():
+        raise HTTPException(status_code=400, detail="Escribe un término para buscar")
+
+    tsquery = func.plainto_tsquery("spanish", query.strip())
+    rows = db.execute(
+        select(
+            Document.id,
+            Document.filename,
+            func.ts_headline("spanish", Document.extracted_text, tsquery).label("snippet"),
+        )
+        .where(
+            Document.organization_id == principal.organization.id,
+            Document.extraction_status == "ready",
+            Document.search_vector.op("@@")(tsquery),
+        )
+        .order_by(
+            func.ts_rank(Document.search_vector, tsquery).desc(),
+            Document.filename,
+            Document.id,
+        )
+        .limit(20)
+    ).all()
+    response.headers["Cache-Control"] = "no-store"
+    return [
+        DocumentSearchResult(id=row.id, filename=row.filename, snippet=row.snippet)
+        for row in rows
+    ]
+
+
 @router.get("/{document_id}/download")
 def download_document(
     document_id: UUID,
@@ -140,6 +187,42 @@ def download_document(
             "Content-Security-Policy": "default-src 'none'; sandbox",
         },
     )
+
+
+@router.post(
+    "/{document_id}/extract",
+    response_model=DocumentRead,
+    dependencies=[Depends(require_frontend_origin)],
+)
+def reprocess_document(
+    document_id: UUID,
+    response: Response,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    db: Annotated[Session, Depends(get_db)],
+) -> DocumentRead:
+    document = _find_document(db, document_id, principal.organization.id)
+    try:
+        content = read_object(document.storage_key)
+    except OSError:
+        logger.error("No se pudo leer el archivo original durante la extracción")
+        raise HTTPException(status_code=500, detail="No se pudo procesar el documento") from None
+
+    try:
+        document.extracted_text = extract_document_text(document.content_type, content)
+        document.extraction_status = "ready"
+    except DocumentExtractionError:
+        document.extracted_text = None
+        document.extraction_status = "failed"
+
+    try:
+        db.commit()
+        db.refresh(document)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No se pudo procesar el documento") from None
+
+    response.headers["Cache-Control"] = "no-store"
+    return _read_model(document)
 
 
 @router.delete(
