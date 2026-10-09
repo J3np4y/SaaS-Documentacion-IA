@@ -1,8 +1,8 @@
 # Hito 5 — carga y gestión de documentos
 
-## Estado: en desarrollo; decisiones de alcance acordadas
+## Estado: completado; verificaciones locales aprobadas
 
-El Hito 4 ya proporciona identidad, sesión y aislamiento por organización. El modelo existente conserva metadatos básicos de `Document`; este hito añade el primer recorrido de carga y gestión sin anticipar extracción, búsqueda ni IA.
+El Hito 4 proporciona identidad, sesión y aislamiento por organización. Este hito añade el recorrido de carga y gestión sin extracción, búsqueda ni IA. Las comprobaciones locales y sus limitaciones están registradas en [testing.md](testing.md).
 
 ## Objetivo de aprendizaje
 
@@ -122,20 +122,20 @@ Si el análisis antimalware o cuotas no se implementan, registrar su ausencia co
 
 La aplicación continúa siendo un prototipo educativo. Este hito por sí solo no constituye una aprobación para aceptar documentos sensibles ni exponer la carga públicamente.
 
-## Criterios de aceptación propuestos
+## Criterios de aceptación
 
 - [x] Formatos, límites, permisos, estrategia de almacenamiento, retención y política de análisis documentados y aceptados antes de implementar.
-- [ ] Migración reversible añade solo metadatos necesarios; ninguna columna almacena el binario.
-- [ ] Carga valida el contenido con límites configurados y no deja filas/objetos parciales en los fallos previstos.
-- [ ] Los bytes se guardan en almacenamiento privado mediante clave opaca generada por servidor.
-- [ ] Listado, descarga y eliminación cumplen autorización de rol y aislamiento por organización en el backend.
-- [ ] El ciclo de fallo entre base de datos y almacenamiento tiene compensación o recuperación explícita y pruebas.
-- [ ] La UI permite completar el flujo acordado y comunica errores sin filtrar detalles internos.
-- [ ] Pruebas backend unitarias/de integración, pruebas de almacenamiento, pruebas frontend, Ruff, lint, typecheck y build pasan; [testing.md](testing.md) registra resultados observados.
-- [ ] README/arquitectura describen únicamente capacidades realmente implementadas; no se declara preparación para producción sin revisión de seguridad de cargas.
+- [x] Migración reversible añade solo metadatos necesarios; ninguna columna almacena el binario.
+- [x] Carga valida el contenido con límites configurados y no deja filas/objetos parciales en los fallos previstos.
+- [x] Los bytes se guardan en almacenamiento privado mediante clave opaca generada por servidor.
+- [x] Listado, descarga y eliminación cumplen autorización de rol y aislamiento por organización en el backend.
+- [x] El ciclo de fallo entre base de datos y almacenamiento tiene compensación o recuperación explícita y pruebas.
+- [x] La UI permite completar el flujo acordado y comunica errores sin filtrar detalles internos.
+- [x] Pruebas backend unitarias/de integración, pruebas de almacenamiento, pruebas frontend, Ruff, lint, typecheck y build pasan; [testing.md](testing.md) registra resultados observados.
+- [x] README/arquitectura describen únicamente capacidades realmente implementadas; no se declara preparación para producción sin revisión de seguridad de cargas.
 
 ## Referencias
 
 - [ADR 0004: almacenamiento de documentos](adr/0004-document-storage.md)
 - [Arquitectura](architecture.md)
-- [Pruebas previstas](testing.md#hito-5--carga-y-gestion-de-documentos-pruebas-previstas)
+- [Resultados de pruebas](testing.md#hito-5--carga-y-gestion-de-documentos)

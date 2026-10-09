@@ -196,4 +196,25 @@ describe("AuthPanel", () => {
     expect(await screen.findByText("Todavía no hay documentos cargados.")).toBeTruthy();
     confirm.mockRestore();
   });
+
+  it("shows the backend validation error when a document upload fails", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(owner))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ detail: "El contenido no parece ser un PDF." }, 400));
+
+    render(<AuthPanel />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    fireEvent.change(screen.getByLabelText("Elige un documento"), {
+      target: { files: [new File(["not a pdf"], "manual.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Cargar documento" }).closest("form")!);
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "El contenido no parece ser un PDF.",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
 });

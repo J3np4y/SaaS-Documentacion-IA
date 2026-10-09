@@ -66,6 +66,8 @@ def validate_document(filename: str | None, content: bytes) -> tuple[str, str]:
         except (OSError, zipfile.BadZipFile):
             raise InvalidDocument("El contenido no parece ser un documento DOCX.") from None
     else:
+        if content.startswith((b"%PDF-", b"PK\x03\x04")):
+            raise InvalidDocument("El contenido no corresponde a un archivo TXT.")
         try:
             text = content.decode("utf-8")
         except UnicodeDecodeError:

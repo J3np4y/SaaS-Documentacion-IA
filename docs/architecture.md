@@ -25,7 +25,7 @@ Alembic -> migraciones versionadas de esquema
 
 FastAPI conserva `/health` como comprobación de vida independiente de la base de datos y expone `/ready` como comprobación de preparación que verifica una conexión real a PostgreSQL. Si la base de datos no está disponible, `/ready` responderá con estado no disponible sin revelar detalles de conexión.
 
-El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. La gestión y subida de documentos se planifican para el Hito 5.
+El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. El Hito 5 añade la gestión de documentos con bytes en un directorio local privado.
 
 ## Acceso y permisos (Hito 4)
 
@@ -41,7 +41,7 @@ Registro con email/contraseña crea una organización y a su primer usuario como
 
 Las rutas proxy de Next.js reenvían cookies al backend sin exponerlas a JavaScript. La sesión vive en PostgreSQL para revocarla; el navegador solo conserva un identificador aleatorio `HttpOnly`, `SameSite=Lax`, con vencimiento y `Secure` en despliegues HTTPS. El backend valida el encabezado `Origin` en operaciones que cambian estado. Las invitaciones se comparten manualmente y no verifican la dirección de correo.
 
-## Gestión de documentos (Hito 5 en desarrollo)
+## Gestión de documentos (Hito 5 completado)
 
 ```text
 Navegador -> Next.js -> FastAPI

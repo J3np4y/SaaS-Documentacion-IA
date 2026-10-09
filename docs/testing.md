@@ -63,27 +63,17 @@ Las pruebas de integración continúan usando solo `TEST_DATABASE_URL` apuntada 
 - `npm ci` informó 9 avisos de vulnerabilidad (1 moderado, 6 altos y 2 críticos) en el árbol de dependencias instalado; no se actualizaron dependencias frontend fuera del alcance del Hito 4.
 
 La verificación local del hito está completa; no se ha ejecutado una CI de GitHub para estos cambios. La falta de rate limiting distribuido, verificación de correo y recuperación de contraseña debe permanecer visible como limitación: el hito no implica que el login esté listo para producción.
-## Hito 5 — carga y gestión de documentos: cobertura y pruebas pendientes
+## Hito 5 — carga y gestión de documentos
 
-El alcance aprobado y el plan de aprendizaje están en [hito-05.md](hito-05.md). La primera versión del flujo ya está implementada; estas pruebas de integración requieren ejecutar la migración y usar el PostgreSQL desechable antes de considerar el hito completo.
+El alcance aprobado está en [hito-05.md](hito-05.md) y la decisión de almacenamiento en [ADR 0004](adr/0004-document-storage.md).
 
-En PostgreSQL todavía hay que confirmar:
-
-- Rechazo de archivo vacío, demasiado grande, extensión/tipo no permitido, contenido que no corresponde con el tipo declarado y nombre malformado; aceptación de cada formato permitido.
-- Tratamiento seguro de nombres Unicode, separadores, rutas relativas, nombres duplicados y caracteres de control; las claves físicas deben generarse en servidor.
-- Persistencia de metadatos y bytes, estado ante error de almacenamiento o escritura de base de datos, y borrado sin dejar contenido huérfano (o documentar explícitamente la recuperación/compensación).
-- Propietario y miembro según la matriz de permisos acordada; denegar lectura, descarga, modificación y borrado entre organizaciones, incluso alterando UUID o nombre de objeto.
-- Descarga autenticada y privada, encabezados seguros, errores que no revelan ruta física/URL interna y ausencia de bytes, datos personales o secretos en logs.
-- Pruebas de UI para carga, progreso si se implementa, éxito, validación, error recuperable, lista vacía y acciones no autorizadas.
-- Prueba real contra el backend de almacenamiento elegido además de dobles para fallos; mantener PostgreSQL aislado para metadatos e integridad.
-
-Los casos de integración enumerados siguen pendientes de validación en PostgreSQL. La ausencia de antimalware y cuotas está acordada y debe seguir visible como limitación; no habilita el uso de documentos sensibles ni la exposición pública.
-
-### Hito 5 — carga inicial: en desarrollo
+### Hito 5 — carga inicial: verificación local aprobada
 
 Alcance acordado: PDF, DOCX y TXT, máximo 10 MiB por archivo, almacenamiento local privado, permisos iguales para `owner` y `member`, borrado físico, sin cuota total por organización ni análisis antimalware.
 
-- Frontend: `npm.cmd test` aprobó 18 pruebas; typecheck, lint y build aprobados durante el desarrollo del flujo inicial.
-- Backend: `pytest -q` aprobó 19 pruebas unitarias; las pruebas de PostgreSQL se omitieron por no tener `TEST_DATABASE_URL`/Docker en este entorno. Ruff y compilación Python aprobados.
+- Frontend: `npm.cmd test` aprobó 19 pruebas; typecheck, lint y build aprobados durante el desarrollo del flujo inicial.
+- Backend: `pytest -q` aprobó 48 pruebas contra PostgreSQL desechable, incluidas autenticación, migración, validación de archivos, aislamiento por organización, límites y compensación de fallos de base de datos. Ruff y compilación Python aprobados.
 - Flujo funcional adicional contra SQLite temporal: registro, carga, listado, descarga con encabezados seguros y borrado físico pasaron. Esto comprueba el flujo HTTP, pero no sustituye las pruebas de integración ni la migración en PostgreSQL.
-- Pruebas de integración de carga, tamaño exacto, aislamiento por organización, migración y escritura/lectura/borrado requieren PostgreSQL en Docker. No se pudieron ejecutar en este entorno porque Docker Desktop no estaba disponible. No se considera el Hito 5 verificado ni completo hasta correr esas pruebas en un entorno con PostgreSQL.
+- Migraciones PostgreSQL verificadas con ciclo `upgrade head` → `downgrade base` → `upgrade head`.
+- La primera ejecución encontró un archivo PDF aceptado con extensión TXT; se corrigió la validación y las 48 pruebas pasaron al repetir la suite completa.
+- No se ha ejecutado CI de GitHub para esta rama.

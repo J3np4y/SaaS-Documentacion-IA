@@ -54,6 +54,8 @@ def test_validates_docx_archive_structure() -> None:
         ("manual.exe", b"content"),
         ("manual.pdf", b"not a PDF"),
         ("manual.docx", b"not a ZIP"),
+        ("manual.txt", b"%PDF-1.7"),
+        ("manual.txt", b"PK\x03\x04" + b"\x00" * 20),
         ("manual.txt", b"\xff"),
     ],
 )

@@ -40,15 +40,14 @@ Alcance y criterios: [hito-03.md](hito-03.md). La selección técnica aceptada s
 
 El recorrido de aprendizaje está en [hito-04.md](hito-04.md); la decisión técnica, en [ADR 0003](adr/0003-authentication-and-access.md). El login no se considera listo para producción mientras falten los controles de abuso y recuperación indicados en el hito.
 
-## Hito 5 — carga y gestión de documentos: en desarrollo
+## Hito 5 — carga y gestión de documentos: completado; pruebas locales aprobadas
 
 - Decisiones acordadas: PDF/DOCX/TXT, 10 MiB por archivo, almacenamiento local privado, permisos iguales para ambos roles, borrado físico y sin antimalware/cuotas totales por organización.
-- Diseñar el flujo de subida y validación de archivos no confiables.
-- Guardar metadatos en PostgreSQL y bytes en el directorio local privado acordado.
-- Añadir listado, descarga y eliminación con aislamiento por organización.
-- Mantener extracción, indexación, búsqueda y respuestas de IA fuera del alcance.
+- Carga, listado, descarga y borrado con permisos por organización.
+- Validación de tipos y límite de tamaño; bytes en almacenamiento local privado.
+- Extracción, indexación, búsqueda y respuestas de IA siguen fuera del alcance.
 
-El plan de aprendizaje y los criterios están en [hito-05.md](hito-05.md). Las decisiones y sus consecuencias están en el [ADR 0004](adr/0004-document-storage.md).
+El recorrido de aprendizaje y los criterios están en [hito-05.md](hito-05.md). Las decisiones y sus consecuencias están en el [ADR 0004](adr/0004-document-storage.md). Los resultados de pruebas locales están en [testing.md](testing.md).
 
 ## Hitos posteriores
 

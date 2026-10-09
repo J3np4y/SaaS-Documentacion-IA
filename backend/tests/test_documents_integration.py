@@ -131,6 +131,7 @@ def test_upload_accepts_a_file_at_the_exact_size_limit(document_client) -> None:
     [
         ("empty.txt", 0, b"", 400),
         ("fake.txt", 8, b"%PDF-1.7", 400),
+        ("fake-archive.txt", 24, b"PK\x03\x04" + b"\x00" * 20, 400),
         ("unknown.exe", 8, b"anything", 400),
         ("large.txt", 10 * 1024 * 1024 + 1, None, 413),
     ],
