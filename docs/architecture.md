@@ -57,7 +57,7 @@ El backend asigna la organización desde la sesión, no desde campos confiados a
 
 El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estándar y de TXT como UTF-8. El texto se guarda en PostgreSQL junto a su estado; una columna generada y un índice GIN permiten búsqueda de texto completo con la configuración española. Las consultas se limitan a la organización de la sesión. El procesamiento es síncrono y acotado; si falla, se conserva el original y se puede reintentar. OCR y embeddings quedan fuera del Hito 6. El recorrido y las limitaciones están en [hito-06.md](hito-06.md).
 
-## RAG, citas y evaluación (Hito 7 implementado; CI pendiente)
+## RAG, citas y evaluación (Hito 7 completado; CI aprobada)
 
 La aplicación usa la API de OpenAI para embeddings y generación, y PostgreSQL con pgvector para recuperar fragmentos de la organización autenticada. El texto del documento, la pregunta y el contexto se envían a OpenAI cuando el proveedor está configurado. Los documentos antiguos requieren indexación explícita; los nuevos se indexan durante la carga solo con una clave configurada. Las decisiones de modelos, fragmentación, citas, límites y privacidad están en [ADR 0005](adr/0005-rag-models-and-retrieval.md) y [hito-07.md](hito-07.md). La evaluación local usa vectores y respuestas sintéticos y no sustituye una medición de calidad del modelo real.
 

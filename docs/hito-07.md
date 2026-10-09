@@ -1,8 +1,8 @@
 # Hito 7 — RAG, citas y evaluación
 
-## Estado: implementación y comprobaciones locales completadas; CI pendiente
+## Estado: completado; comprobaciones locales y CI aprobadas
 
-El Hito 6 permite buscar texto extraído con PostgreSQL. Este hito propone recuperar pasajes relevantes y usarlos para redactar respuestas que indiquen las fuentes. El sistema debe reconocer cuándo sus documentos no aportan evidencia suficiente en lugar de inventar una respuesta.
+El Hito 6 permite buscar texto extraído con PostgreSQL. En este hito se recuperan pasajes relevantes y se usan para redactar respuestas que indican sus fuentes. El sistema reconoce cuándo los documentos no aportan evidencia suficiente en lugar de inventar una respuesta.
 
 ## Objetivo de aprendizaje
 

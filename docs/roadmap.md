@@ -59,9 +59,9 @@ El recorrido de aprendizaje y los criterios están en [hito-05.md](hito-05.md). 
 
 El recorrido, las decisiones y la comprobación local están en [hito-06.md](hito-06.md) y [testing.md](testing.md).
 
-## Hito 7 — RAG con pgvector, citas y evaluación: implementación local completada; CI pendiente
+## Hito 7 — RAG con pgvector, citas y evaluación: completado; CI aprobada
 
-La indexación, recuperación aislada por organización, respuestas con citas y abstención están implementadas. Las pruebas locales y la evaluación determinista están registradas en [testing.md](testing.md); la validación de CI sigue pendiente. Véase el [hito](hito-07.md) y [ADR 0005](adr/0005-rag-models-and-retrieval.md).
+La indexación, recuperación aislada por organización, respuestas con citas y abstención están implementadas. Las pruebas locales, CI y evaluación determinista están registradas en [testing.md](testing.md). Véase el [hito](hito-07.md) y [ADR 0005](adr/0005-rag-models-and-retrieval.md).
 
 ## Hito 8 — observabilidad, control de coste y despliegue
 

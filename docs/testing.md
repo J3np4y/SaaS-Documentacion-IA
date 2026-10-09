@@ -99,4 +99,4 @@ La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF l
 - Migraciones PostgreSQL/pgvector verificadas con `upgrade head` → `downgrade base` → `upgrade head`, incluida la extensión vectorial y el índice HNSW.
 - Frontend: 25 pruebas, lint, typecheck y build de producción aprobados.
 - No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx deprecada continúa sin afectar la suite.
-- GitHub Actions aún pendiente para los cambios de este hito.
+- GitHub Actions aprobada para el commit `a2e43e1231217e02b40d23adb3ed58e0e04aaeaf`: [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940). Los jobs de backend (Ruff y pytest contra pgvector) y frontend (lint, typecheck, tests y build) terminaron correctamente.
