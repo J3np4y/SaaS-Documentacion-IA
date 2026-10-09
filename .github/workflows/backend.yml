@@ -25,9 +25,8 @@ jobs:
       - name: Start PostgreSQL
         run: |
           sudo systemctl start postgresql
-          sudo -u postgres psql --command "CREATE ROLE docs_assistant WITH LOGIN PASSWORD 'docs_assistant_test';"
+          sudo -u postgres psql --command "CREATE ROLE docs_assistant WITH LOGIN SUPERUSER PASSWORD 'docs_assistant_test';"
           sudo -u postgres createdb --owner=docs_assistant docs_assistant_test
-          sudo -u postgres psql --dbname=docs_assistant_test --command "CREATE EXTENSION vector;"
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
       - run: pytest
