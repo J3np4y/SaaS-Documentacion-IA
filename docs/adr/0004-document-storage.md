@@ -3,6 +3,10 @@
 - Estado: propuesta; requiere decisiones de producto antes de implementar
 - Fecha: 2026-10-07
 
+## Resumen sencillo
+
+Todavía no se ha decidido dónde ni cómo guardar los archivos. La propuesta separa los datos que describen un archivo de su contenido, y exige que el servidor compruebe quién puede acceder. Las preguntas pendientes deben responderse antes de programar la subida; las alternativas de abajo sirven para comparar, no son decisiones aprobadas.
+
 ## Contexto
 
 El esquema actual contiene metadatos de `Document` ligados a una organización, pero todavía no hay flujo de carga, almacenamiento de bytes ni endpoints de gestión. La hoja de ruta propone añadir subida, validación, almacenamiento y gestión antes de extracción de contenido o búsqueda.

@@ -17,6 +17,8 @@ Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte s
 
 El recorrido explica los conceptos antes de implementarlos: identidad y autenticación, autorización, organizaciones y pertenencia, persistencia y migraciones, y separación entre interfaz y API. Cada funcionalidad se acompaña de decisiones razonadas y comprobaciones para entender tanto el camino correcto como los límites y fallos previsibles.
 
+Si estás empezando, sigue la [guía de aprendizaje](docs/guia-aprendizaje.md): explica por dónde empezar, cómo avanzar una fase cada vez y cómo leer los hitos, las decisiones y las pruebas sin tener que conocer todo el stack de antemano.
+
 ## Stack
 
 - **Frontend:** Next.js, React, TypeScript y CSS.

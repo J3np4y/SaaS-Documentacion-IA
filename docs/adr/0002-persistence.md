@@ -3,6 +3,10 @@
 - Estado: aceptada
 - Fecha: 2026-09-27
 
+## Resumen sencillo
+
+La aplicación necesita guardar datos entre reinicios y saber cómo cambian sus tablas con el tiempo. Se decidió usar PostgreSQL para los datos, SQLAlchemy para que Python trabaje con ellos y Alembic para versionar cambios de estructura. Las pruebas usan PostgreSQL, igual que el proyecto, para que no haya sorpresas por probar con otra base.
+
 ## Contexto
 
 El Hito 2 deja una API funcional y PostgreSQL en Docker Compose, pero todavía no hay conexión entre ellos ni un esquema versionado. Antes de autenticación, organizaciones y documentos deben persistirse de forma reproducible.

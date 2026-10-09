@@ -10,6 +10,18 @@ Aprender a recibir contenido binario no confiable de forma segura, distinguir lo
 
 Cada fase explica qué amenaza o problema resuelve, qué regla se implementa y qué prueba demuestra el comportamiento. No generar una gran implementación de subida antes de decidir tipos, límites, acceso y ciclo de vida.
 
+## Recorrido recomendado para empezar
+
+Este hito todavía está planificado: las preguntas abiertas de abajo necesitan respuesta antes de implementar. Para aprender el tema sin abordar todos los detalles a la vez, sigue este orden:
+
+1. **Separar descripción y contenido:** identifica qué datos sobre un archivo guardaríamos en PostgreSQL y por qué los bytes se guardarían aparte.
+2. **Poner límites a la entrada:** acuerda formatos y tamaño máximo; piensa qué podría salir mal si se confía en el nombre o el tipo declarado por el navegador.
+3. **Proteger el acceso:** dibuja quién puede cargar, ver, descargar y borrar, y de qué organización proviene el permiso.
+4. **Decidir qué pasa ante un fallo:** observa que guardar datos y guardar bytes son dos operaciones distintas; define cómo detectar y recuperar un resultado incompleto.
+5. **Solo entonces implementar:** empieza por una operación y su prueba, y añade el resto del recorrido de forma incremental.
+
+No es necesario elegir ahora un proveedor de almacenamiento ni diseñar una abstracción para varios proveedores. Las alternativas y controles detallados de este documento son material de referencia hasta que las decisiones pendientes se acuerden. Consulta [ADR 0004](adr/0004-document-storage.md) para registrar la decisión final.
+
 ## Alcance previsto
 
 El objetivo funcional propuesto es que una persona autenticada pueda cargar un documento a su organización, consultar los documentos de esa organización, descargar uno autorizado y eliminarlo según una política acordada.

@@ -1,5 +1,7 @@
 # Hoja de ruta
 
+Esta página es el índice del progreso: resume qué está terminado y qué viene después. Para aprender los conceptos paso a paso, empieza por la [guía de aprendizaje](guia-aprendizaje.md) y abre el documento de cada hito. Los resultados detallados de comprobaciones se mantienen en [testing.md](testing.md).
+
 ## Hito 1 — base ejecutable y documentada: completado
 
 - Repositorio independiente y estructura con responsabilidades separadas.
@@ -23,7 +25,7 @@
 - Crear las entidades iniciales de organización y metadatos de documento.
 - Separar disponibilidad de la API (`/health`) y disponibilidad de base de datos (`/ready`).
 - Añadir pruebas de integración contra PostgreSQL y servicio PostgreSQL en CI.
-- CI confirmada: [run 36760916434](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/36760916434), backend y frontend aprobados sobre `main`.
+- CI confirmada sobre `main`; enlace y resultados detallados en [testing.md](testing.md).
 
 Alcance y criterios: [hito-03.md](hito-03.md). La selección técnica aceptada se registra en [ADR 0002](adr/0002-persistence.md).
 
@@ -34,9 +36,9 @@ Alcance y criterios: [hito-03.md](hito-03.md). La selección técnica aceptada s
 - Roles `owner`/`member`, invitaciones manuales de un solo uso y UI mínima.
 - Autorización en el backend probada por organización y rol.
 - Sin correo, verificación de email ni recuperación de contraseña en esta fase.
-- Suite backend aprobada contra PostgreSQL (19 pruebas) y migraciones verificadas en ciclo upgrade/downgrade/upgrade.
+- La verificación local y sus resultados están detallados en [testing.md](testing.md).
 
-El alcance de aprendizaje y los resultados comprobados están en [hito-04.md](hito-04.md) y [testing.md](testing.md); las decisiones técnicas, en [ADR 0003](adr/0003-authentication-and-access.md). El login no se considera listo para producción mientras falten los controles de abuso y recuperación indicados en el hito.
+El recorrido de aprendizaje está en [hito-04.md](hito-04.md); la decisión técnica, en [ADR 0003](adr/0003-authentication-and-access.md). El login no se considera listo para producción mientras falten los controles de abuso y recuperación indicados en el hito.
 
 ## Hito 5 — carga y gestión de documentos: planificación propuesta
 
@@ -46,7 +48,7 @@ El alcance de aprendizaje y los resultados comprobados están en [hito-04.md](hi
 - Añadir listado, descarga y eliminación con aislamiento por organización.
 - Mantener extracción, indexación, búsqueda y respuestas de IA fuera del alcance.
 
-El plan de aprendizaje, preguntas abiertas, criterios y pruebas previstas están en [hito-05.md](hito-05.md). El ADR 0004 recoge principios propuestos y alternativas aún pendientes; no selecciona proveedor de almacenamiento.
+El plan de aprendizaje, preguntas abiertas, criterios y pruebas previstas están en [hito-05.md](hito-05.md). El [ADR 0004](adr/0004-document-storage.md) recoge principios propuestos y alternativas aún pendientes; no selecciona proveedor de almacenamiento.
 
 ## Hitos posteriores
 

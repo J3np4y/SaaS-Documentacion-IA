@@ -1,5 +1,7 @@
 # Estrategia y registro de pruebas
 
+Este es el registro de referencia para los resultados observados. Los hitos pueden resumir sus criterios y enlazar aquí, pero una comprobación solo se considera ejecutada cuando hay un resultado registrado. Para saber qué estudiar primero, consulta la [guía de aprendizaje](guia-aprendizaje.md).
+
 ## Enfoque
 
 - Escribir pruebas junto a cada comportamiento nuevo relevante.

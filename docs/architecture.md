@@ -1,5 +1,7 @@
 # Arquitectura
 
+Esta página muestra las piezas y cómo se comunican; no es necesario aprender todos los detalles de una vez. Para estudiar el proyecto por etapas, consulta la [guía de aprendizaje](guia-aprendizaje.md). Las secciones indican si describen capacidades actuales o trabajo planificado.
+
 ## Estado actual — persistencia y acceso básico
 
 FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para autenticación. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos iniciales de documentos.
@@ -66,7 +68,6 @@ Navegador -> Next.js / TypeScript -> FastAPI
 
 - El backend será autoridad para identidad, permisos y acceso a datos.
 - El aislamiento por organización se aplicará en las consultas de negocio y se cubrirá con pruebas.
-- El backend es la autoridad para autenticar usuarios, comprobar roles y aislar datos por organización.
 - Contraseñas y secretos de sesión/invitación se almacenan como hashes; los tokens no se registran ni se devuelven después de su emisión.
 - Los binarios no se guardarán en tablas de negocio.
 - Los archivos cargados se tratarán como datos no confiables: validar límites y contenido antes de aceptar, no confiar en nombre/extensión/MIME declarados, y nunca ejecutar ni interpretar archivos como instrucciones.
