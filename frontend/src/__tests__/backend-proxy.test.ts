@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { POST } from "@/app/api/backend/[...path]/route";
+import { GET, POST } from "@/app/api/backend/[...path]/route";
 
 describe("backend route proxy", () => {
   afterEach(() => {
@@ -54,5 +54,73 @@ describe("backend route proxy", () => {
 
     expect(response.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards multipart file bytes without converting them to text", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "document-id" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const boundary = "document-upload-boundary";
+    const binary = new Uint8Array([0, 255, 1, 128]);
+    const prefix = new TextEncoder().encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="sample.pdf"\r\nContent-Type: application/pdf\r\n\r\n`,
+    );
+    const suffix = new TextEncoder().encode(`\r\n--${boundary}--\r\n`);
+    const body = new Uint8Array(prefix.length + binary.length + suffix.length);
+    body.set(prefix);
+    body.set(binary, prefix.length);
+    body.set(suffix, prefix.length + binary.length);
+    const request = new NextRequest("http://localhost:3000/api/backend/organizations/me/documents", {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+      body,
+    });
+
+    const response = await POST(request, {
+      params: Promise.resolve({ path: ["organizations", "me", "documents"] }),
+    });
+
+    expect(response.status).toBe(201);
+    const [, init] = fetchMock.mock.calls[0];
+    const forwardedHeaders = init?.headers as Headers;
+    expect(forwardedHeaders.get("content-type")).toContain(`boundary=${boundary}`);
+    expect(new Uint8Array(init?.body as ArrayBuffer)).toEqual(body);
+  });
+
+  it("preserves binary downloads and safe response headers", async () => {
+    const bytes = new Uint8Array([0, 255, 1, 128]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(bytes, {
+          status: 200,
+          headers: {
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="sample.pdf"',
+            "x-content-type-options": "nosniff",
+          },
+        }),
+      ),
+    );
+    const request = new NextRequest(
+      "http://localhost:3000/api/backend/organizations/me/documents/123e4567-e89b-12d3-a456-426614174000/download",
+    );
+    const response = await GET(request, {
+      params: Promise.resolve({
+        path: ["organizations", "me", "documents", "123e4567-e89b-12d3-a456-426614174000", "download"],
+      }),
+    });
+
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(response.headers.get("content-disposition")).toContain("attachment");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });

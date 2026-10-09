@@ -15,6 +15,12 @@ SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() in {
     "true",
     "yes",
 }
+DOCUMENT_STORAGE_DIR = Path(
+    os.getenv(
+        "DOCUMENT_STORAGE_DIR",
+        str(Path(__file__).resolve().parents[3] / ".data" / "documents"),
+    )
+).expanduser()
 
 
 def _postgres_url(database: str, port: int) -> str | None:

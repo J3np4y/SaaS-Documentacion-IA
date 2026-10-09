@@ -138,6 +138,17 @@ h1 { max-width: 720px; margin: 18px 0; font-size: clamp(38px, 6vw, 64px); line-h
 .invite-code span { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
 .member-list { display: grid; gap: 12px; padding: 0; list-style: none; }
 .member-list li { display: grid; grid-template-columns: minmax(180px, 1fr) 150px auto auto; align-items: end; gap: 10px; }
+.document-tools { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.document-tools h3 { margin-top: 0; }
+.document-tools > p, .document-list small { color: var(--muted); font-size: 13px; }
+.document-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.document-form label { display: grid; gap: 6px; font-size: 14px; font-weight: 700; }
+.document-form input { max-width: 100%; }
+.document-list { display: grid; gap: 12px; padding: 0; list-style: none; }
+.document-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.document-list li > span { display: grid; flex: 1; min-width: 180px; gap: 4px; overflow-wrap: anywhere; }
+.document-list a { text-decoration: none; }
+.button:disabled { cursor: wait; opacity: 0.65; }
 
 @media (max-width: 700px) {
   .page-shell { width: min(100% - 32px, 540px); }
@@ -153,4 +164,5 @@ h1 { max-width: 720px; margin: 18px 0; font-size: clamp(38px, 6vw, 64px); line-h
   .auth-panel__heading { align-items: flex-start; flex-direction: column; }
   .auth-form { grid-template-columns: 1fr; }
   .member-list li { grid-template-columns: 1fr 1fr; }
+  .document-form { align-items: stretch; flex-direction: column; }
 }

@@ -1,6 +1,6 @@
-# Frontend — Hito 2 completado
+# Frontend — interfaz web
 
-Interfaz inicial de Docs Assistant con Next.js App Router y TypeScript. La página consulta `/health` desde el servidor y presenta el estado de la API; no envía detalles de red al navegador. Las pruebas, lint, tipos y build pasan localmente; el usuario confirmó GitHub Actions en verde.
+Interfaz web de Docs Assistant con Next.js App Router y TypeScript. La página consulta `/health` desde el servidor y presenta el estado de la API; las rutas proxy same-origin también manejan autenticación y, durante el Hito 5, la carga y gestión inicial de documentos.
 
 ## Requisitos
 
@@ -42,4 +42,4 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-`npm.cmd test` valida los estados y fallos de la API, la validación de URL y los anuncios accesibles. Consulta [docs/testing.md](../docs/testing.md). `package-lock.json` fija las versiones; usa `npm.cmd ci` para una instalación reproducible.
+`npm.cmd test` valida el estado de la API, el proxy same-origin, autenticación y el flujo de documentos. Consulta [docs/testing.md](../docs/testing.md). `package-lock.json` fija las versiones; usa `npm.cmd ci` para una instalación reproducible.

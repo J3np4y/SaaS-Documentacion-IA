@@ -2,9 +2,9 @@
 
 Esta página muestra las piezas y cómo se comunican; no es necesario aprender todos los detalles de una vez. Para estudiar el proyecto por etapas, consulta la [guía de aprendizaje](guia-aprendizaje.md). Las secciones indican si describen capacidades actuales o trabajo planificado.
 
-## Estado actual — persistencia y acceso básico
+## Estado actual — persistencia, acceso y gestión de documentos
 
-FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para autenticación. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos iniciales de documentos.
+FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para las rutas de autenticación y documentos. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos de documentos; los bytes se guardan en un directorio privado configurado por `DOCUMENT_STORAGE_DIR`.
 
 ```text
 Navegador -> Next.js (página renderizada en servidor) -> FastAPI /health
@@ -41,7 +41,7 @@ Registro con email/contraseña crea una organización y a su primer usuario como
 
 Las rutas proxy de Next.js reenvían cookies al backend sin exponerlas a JavaScript. La sesión vive en PostgreSQL para revocarla; el navegador solo conserva un identificador aleatorio `HttpOnly`, `SameSite=Lax`, con vencimiento y `Secure` en despliegues HTTPS. El backend valida el encabezado `Origin` en operaciones que cambian estado. Las invitaciones se comparten manualmente y no verifican la dirección de correo.
 
-## Gestión de documentos (Hito 5 planificado)
+## Gestión de documentos (Hito 5 en desarrollo)
 
 ```text
 Navegador -> Next.js -> FastAPI

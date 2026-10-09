@@ -36,6 +36,8 @@ def test_organization_and_document_metadata_persist(migrated_database) -> None:
             organization_id=organization.id,
             filename="manual.pdf",
             content_type="application/pdf",
+            storage_key=uuid4().hex,
+            size_bytes=12,
         )
         session.add(document)
         session.commit()
@@ -43,3 +45,4 @@ def test_organization_and_document_metadata_persist(migrated_database) -> None:
         stored = session.get(Document, document.id)
         assert stored is not None
         assert stored.organization_id == organization.id
+        assert stored.size_bytes == 12

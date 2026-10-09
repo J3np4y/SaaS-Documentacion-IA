@@ -3,6 +3,7 @@ app/__init__.py
 app/main.py
 app/api/__init__.py
 app/api/auth.py
+app/api/documents.py
 app/api/health.py
 app/api/organizations.py
 app/core/__init__.py
@@ -19,6 +20,9 @@ app/models/organization.py
 app/models/user.py
 app/schemas/__init__.py
 app/schemas/auth.py
+app/schemas/document.py
+app/services/__init__.py
+app/services/document_storage.py
 docs_assistant_api.egg-info/PKG-INFO
 docs_assistant_api.egg-info/SOURCES.txt
 docs_assistant_api.egg-info/dependency_links.txt
@@ -26,5 +30,7 @@ docs_assistant_api.egg-info/requires.txt
 docs_assistant_api.egg-info/top_level.txt
 tests/test_auth_integration.py
 tests/test_database_integration.py
+tests/test_document_storage.py
+tests/test_documents_integration.py
 tests/test_health.py
 tests/test_security.py

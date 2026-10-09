@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 type AuthUser = {
   id: string;
@@ -12,15 +12,23 @@ type AuthUser = {
 };
 
 type Member = Pick<AuthUser, "id" | "email" | "full_name" | "role">;
+type DocumentItem = {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+};
 type AuthMode = "register" | "login";
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(`/api/backend${path}`, {
     ...init,
     cache: "no-store",
     headers: {
       accept: "application/json",
-      ...(init?.body ? { "content-type": "application/json" } : {}),
+      ...(init?.body && !isFormData ? { "content-type": "application/json" } : {}),
       ...init?.headers,
     },
   });
@@ -44,9 +52,13 @@ export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode>("register");
   const [error, setError] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentBusy, setDocumentBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteExpires, setInviteExpires] = useState("");
   const [memberRoles, setMemberRoles] = useState<Record<string, Member["role"]>>({});
+  const documentRequestVersion = useRef(0);
 
   const loadUser = useCallback(async () => {
     try {
@@ -74,6 +86,22 @@ export function AuthPanel() {
     }
   }, []);
 
+  const loadDocuments = useCallback(async () => {
+    const requestVersion = ++documentRequestVersion.current;
+    setDocumentsLoading(true);
+    try {
+      const rows = await requestJson<DocumentItem[]>("/organizations/me/documents");
+      if (!Array.isArray(rows)) throw new Error("La respuesta de documentos no es válida.");
+      if (requestVersion === documentRequestVersion.current) setDocuments(rows);
+    } catch (cause) {
+      if (requestVersion === documentRequestVersion.current) {
+        setError(cause instanceof Error ? cause.message : "No se pudieron cargar los documentos.");
+      }
+    } finally {
+      if (requestVersion === documentRequestVersion.current) setDocumentsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const task = window.setTimeout(() => void loadUser(), 0);
     return () => window.clearTimeout(task);
@@ -84,6 +112,12 @@ export function AuthPanel() {
     const task = window.setTimeout(() => void loadMembers(), 0);
     return () => window.clearTimeout(task);
   }, [user, loadMembers]);
+
+  useEffect(() => {
+    if (!user) return;
+    const task = window.setTimeout(() => void loadDocuments(), 0);
+    return () => window.clearTimeout(task);
+  }, [user, loadDocuments]);
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -118,8 +152,11 @@ export function AuthPanel() {
     setError("");
     try {
       await requestJson<void>("/auth/logout", { method: "POST" });
+      documentRequestVersion.current += 1;
       setUser(null);
       setMembers([]);
+      setDocuments([]);
+      setDocumentsLoading(false);
       setInviteCode("");
       setMode("login");
     } catch (cause) {
@@ -162,6 +199,50 @@ export function AuthPanel() {
       await loadMembers();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo retirar al miembro.");
+    }
+  }
+
+  async function uploadDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    const form = event.currentTarget;
+    const file = new FormData(form).get("file");
+    if (!(file instanceof File)) {
+      setError("Selecciona un archivo para cargar.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("El archivo supera el límite de 10 MiB.");
+      return;
+    }
+    setDocumentBusy(true);
+    try {
+      await requestJson<DocumentItem>("/organizations/me/documents", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      form.reset();
+      await loadDocuments();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo cargar el documento.");
+    } finally {
+      setDocumentBusy(false);
+    }
+  }
+
+  async function removeDocument(document: DocumentItem) {
+    if (!window.confirm(`¿Borrar "${document.filename}" definitivamente?`)) return;
+    setError("");
+    setDocumentBusy(true);
+    try {
+      await requestJson<void>(`/organizations/me/documents/${document.id}`, {
+        method: "DELETE",
+      });
+      await loadDocuments();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo borrar el documento.");
+    } finally {
+      setDocumentBusy(false);
     }
   }
 
@@ -237,6 +318,57 @@ export function AuthPanel() {
               </ul>
             </div>
           )}
+          <div className="document-tools">
+            <h3>Documentos de tu organización</h3>
+            <p>PDF, DOCX o TXT · máximo 10 MiB por archivo. El borrado es definitivo.</p>
+            <form className="document-form" onSubmit={uploadDocument}>
+              <label>
+                Elige un documento
+                <input
+                  name="file"
+                  type="file"
+                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                  required
+                />
+              </label>
+              <button className="button" type="submit" disabled={documentBusy}>
+                {documentBusy ? "Procesando…" : "Cargar documento"}
+              </button>
+            </form>
+            {documentsLoading ? (
+              <p role="status" aria-live="polite">Cargando documentos…</p>
+            ) : documents.length === 0 ? (
+              <p role="status">Todavía no hay documentos cargados.</p>
+            ) : (
+              <ul className="document-list">
+                {documents.map((document) => (
+                  <li key={document.id}>
+                    <span>
+                      <strong>{document.filename}</strong>
+                      <small>
+                        {document.content_type} · {(document.size_bytes / (1024 * 1024)).toFixed(2)} MiB
+                        {" · "}Cargado {new Date(document.created_at).toLocaleDateString()}
+                      </small>
+                    </span>
+                    <a
+                      className="button button--quiet"
+                      href={`/api/backend/organizations/me/documents/${document.id}/download`}
+                    >
+                      Descargar
+                    </a>
+                    <button
+                      className="button button--quiet"
+                      type="button"
+                      disabled={documentBusy}
+                      onClick={() => void removeDocument(document)}
+                    >
+                      Borrar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       ) : (
         <>

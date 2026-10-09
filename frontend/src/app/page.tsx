@@ -22,8 +22,8 @@ export default async function HomePage() {
         <p className="eyebrow">CONOCIMIENTO DE EQUIPO, EN UN SOLO LUGAR</p>
         <h1 id="welcome-title">La documentación de tu equipo, lista para encontrar.</h1>
         <p className="hero__copy">
-          Estamos preparando un espacio seguro para organizar documentos y consultar su contenido
-          con respuestas basadas en fuentes.
+          Carga y organiza documentos de tu equipo. La búsqueda y las respuestas basadas en fuentes
+          llegarán en una siguiente etapa.
         </p>
         <div className="health-card">
           <div>
@@ -50,7 +50,7 @@ export default async function HomePage() {
         <article className="feature-card">
           <span className="feature-card__number">03</span>
           <h2>Acceso bajo control</h2>
-          <p>Los permisos se comprobarán en el servidor cuando llegue la gestión de usuarios.</p>
+          <p>El servidor comprueba la identidad, el rol y la organización antes de permitir acciones.</p>
         </article>
       </section>
 

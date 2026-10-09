@@ -4,14 +4,14 @@ Aplicación web para que equipos colaboren alrededor de su documentación y, en 
 
 Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte se construye entendiendo primero el problema, los conceptos y las decisiones de diseño. La meta no es producir código a ciegas, sino aprender cómo las piezas de una aplicación real se relacionan y cómo tomar decisiones técnicas con criterio.
 
-> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones y permisos básicos. La ingesta y consulta de documentos y las respuestas generadas por IA todavía no están implementadas. Es un prototipo educativo, no un servicio listo para producción.
+> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones y permisos básicos. La carga y gestión inicial de documentos está en desarrollo; extracción, búsqueda y respuestas generadas por IA todavía no están implementadas. Es un prototipo educativo, no un servicio listo para producción.
 
 ## Cómo funciona
 
 1. Una persona crea una cuenta y una organización, o se incorpora a una organización mediante una invitación.
 2. Inicia sesión y usa la aplicación dentro de su organización. Los permisos determinan qué acciones puede realizar cada integrante.
 3. El backend valida la identidad, los permisos y la organización de cada solicitud; el frontend presenta el flujo y sus estados.
-4. La base técnica está preparada para evolucionar hacia la gestión de documentos y, más adelante, búsqueda y respuestas de IA vinculadas a fuentes.
+4. La carga de documentos se está desarrollando con almacenamiento local privado; extracción, búsqueda y respuestas de IA vinculadas a fuentes quedan para etapas posteriores.
 
 ## Aprendizaje guiado
 
@@ -64,6 +64,8 @@ npm.cmd run dev
 ```
 
 Abre `http://localhost:3000`. La API está disponible en `http://localhost:8000` y su interfaz interactiva en `http://localhost:8000/docs`.
+
+El Hito 5 admite PDF, DOCX y TXT de hasta 10 MiB y guarda los archivos en `.data/documents/` (ignorado por Git). Puedes cambiar esa ruta con `DOCUMENT_STORAGE_DIR`. No subas archivos sensibles: esta versión no incluye análisis antimalware, cuotas ni controles de producción.
 
 ## Uso responsable
 
