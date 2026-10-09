@@ -1,14 +1,39 @@
 # Hito 5 — carga y gestión de documentos
 
-## Estado: planificación propuesta; decisiones de alcance pendientes
+## Estado: completado; verificaciones locales y CI aprobadas
 
-El Hito 4 ya proporciona identidad, sesión y aislamiento por organización. El modelo existente conserva metadatos básicos de `Document`, pero todavía no recibe ni almacena archivos. Este hito debe construir el primer recorrido completo de documento sin anticipar extracción, búsqueda ni IA.
+El Hito 4 proporciona identidad, sesión y aislamiento por organización. Este hito añade el recorrido de carga y gestión sin extracción, búsqueda ni IA. Las comprobaciones locales, de CI y sus limitaciones están registradas en [testing.md](testing.md).
 
 ## Objetivo de aprendizaje
 
 Aprender a recibir contenido binario no confiable de forma segura, distinguir los metadatos de los bytes, persistirlos en sistemas adecuados y hacer cumplir autorización y aislamiento de tenant en cada operación.
 
 Cada fase explica qué amenaza o problema resuelve, qué regla se implementa y qué prueba demuestra el comportamiento. No generar una gran implementación de subida antes de decidir tipos, límites, acceso y ciclo de vida.
+
+## Recorrido recomendado para empezar
+
+Las decisiones de alcance iniciales ya están acordadas. Para aprender el tema sin abordar todos los detalles a la vez, sigue este orden:
+
+1. **Separar descripción y contenido:** identifica qué datos sobre un archivo guardaríamos en PostgreSQL y por qué los bytes se guardarían aparte.
+2. **Poner límites a la entrada:** acuerda formatos y tamaño máximo; piensa qué podría salir mal si se confía en el nombre o el tipo declarado por el navegador.
+3. **Proteger el acceso:** dibuja quién puede cargar, ver, descargar y borrar, y de qué organización proviene el permiso.
+4. **Decidir qué pasa ante un fallo:** observa que guardar datos y guardar bytes son dos operaciones distintas; define cómo detectar y recuperar un resultado incompleto.
+5. **Solo entonces implementar:** empieza por una operación y su prueba, y añade el resto del recorrido de forma incremental.
+
+No se añade una abstracción para varios proveedores. Consulta [ADR 0004](adr/0004-document-storage.md) para las decisiones aprobadas y sus limitaciones.
+
+## Decisiones de alcance acordadas
+
+- Formatos iniciales: PDF, DOCX y TXT, comprobando el contenido además de la extensión.
+- Tamaño máximo: 10 MiB por archivo; una carga usa una solicitud por archivo. El backend limita el tamaño total de la solicitud multipart a 10 MiB más un margen fijo para sus cabeceras.
+- Almacenamiento: directorio local privado, fuera de los archivos públicos del frontend. `DOCUMENT_STORAGE_DIR` permite cambiar su ubicación; el valor local predeterminado es `.data/documents/`.
+- Permisos: cualquier integrante autenticado (`owner` o `member`) puede cargar, listar, descargar y borrar documentos de su propia organización.
+- Borrado: físico y definitivo, sin periodo de recuperación.
+- Antimalware: no se incluye en este hito; es una limitación explícita y no habilita el uso con documentos sensibles ni el despliegue público.
+- No se implementan cuotas totales por organización en esta primera versión.
+- No se implementa eliminación de organizaciones o cuentas; si se añade, debe borrar también sus archivos.
+
+Estas decisiones acotan una primera versión educativa local; no equivalen a aprobar el sistema para producción.
 
 ## Alcance previsto
 
@@ -21,7 +46,7 @@ El objetivo funcional propuesto es que una persona autenticada pueda cargar un d
 - Las rutas de descarga y borrado comprobarán pertenencia y permisos en el servidor.
 - La UI comunicará carga, aceptación, errores de validación, fallos recuperables y lista vacía sin mostrar rutas internas.
 
-Este alcance es una propuesta derivada de la hoja de ruta, no una decisión sobre formatos, cuotas, proveedor de almacenamiento ni permisos concretos.
+Este alcance implementa las decisiones ya acordadas en este documento; cualquier cambio de formatos, límites, permisos o almacenamiento debe actualizar primero el ADR y este hito.
 
 ## Conceptos y fases de aprendizaje
 
@@ -33,7 +58,7 @@ Este alcance es una propuesta derivada de la hoja de ruta, no una decisión sobr
 
 **Comprueba:** reglas de nulabilidad, longitudes, índices y claves foráneas con migración reversible y pruebas PostgreSQL.
 
-**Decisión pendiente:** formato y campos que necesita presentar la UI.
+**Decisión:** la UI presenta nombre, tipo detectado, tamaño y fecha de carga; los bytes permanecen fuera de PostgreSQL.
 
 ### 2. Validar una entrada no confiable
 
@@ -43,17 +68,17 @@ Este alcance es una propuesta derivada de la hoja de ruta, no una decisión sobr
 
 **Comprueba:** límites exactos, archivo vacío, MIME/extensión falsificados, contenido truncado, nombre malformado y payloads rechazados sin persistencia parcial.
 
-**Decisiones pendientes:** formatos iniciales, tamaño máximo por archivo, número de archivos por petición y si se añade análisis antimalware.
+**Decisiones:** PDF, DOCX y TXT; hasta 10 MiB; un archivo por solicitud; sin análisis antimalware ni cuotas en esta fase.
 
 ### 3. Separar PostgreSQL del almacenamiento binario
 
 **Aprende:** una transacción SQL no suele cubrir una operación en un almacén de objetos o sistema de archivos. Diseñar compensación y estados evita metadatos huérfanos y archivos sin referencia.
 
-**Diseña:** una interfaz pequeña de almacenamiento privado, claves aleatorias creadas por backend y un ciclo claro de guardar bytes, confirmar metadatos y compensar fallos. Mantener el proveedor intercambiable solo si el segundo destino está justificado.
+**Diseña:** un módulo pequeño de almacenamiento privado, claves aleatorias creadas por backend y un ciclo claro de guardar bytes, confirmar metadatos y compensar fallos. No añadir adaptadores para proveedores que no se hayan elegido.
 
 **Comprueba:** fallo antes/después de guardar, colisión de nombres, lectura/escritura denegada, metadatos fallidos y limpieza/compensación; probar la implementación real elegida además de dobles.
 
-**Decisión pendiente:** almacenamiento local privado para desarrollo, almacenamiento de objetos compatible en un servicio concreto u otra opción. La aplicación no debe suponer disponibilidad de un proveedor que todavía no se haya elegido.
+**Decisión:** directorio local privado configurable, sin asumir disponibilidad de un proveedor externo.
 
 ### 4. Aplicar permisos y ciclo de vida
 
@@ -63,7 +88,7 @@ Este alcance es una propuesta derivada de la hoja de ruta, no una decisión sobr
 
 **Comprueba:** acceso propio permitido, UUID ajeno denegado, manipulación de organización denegada, roles según matriz, descargas revocadas después de retirar membresía y comportamiento del borrado coherente en base y almacenamiento.
 
-**Decisiones pendientes:** permisos exactos de `owner` y `member`, retención/recuperación tras borrar y cuotas por usuario u organización.
+**Decisiones:** `owner` y `member` comparten los permisos; el borrado es físico e irreversible; no hay cuotas por organización en esta fase.
 
 ### 5. Integrar la experiencia de usuario
 
@@ -89,7 +114,7 @@ Si el análisis antimalware o cuotas no se implementan, registrar su ausencia co
 - No fiarse de nombre, extensión, MIME, tamaño declarado, ruta, UUID ni organización enviados por el cliente.
 - Generar claves opacas no adivinables; almacenar objetos fuera de un directorio público; no formar rutas desde entradas del usuario.
 - Limitar bytes y tiempo de lectura para reducir abuso de memoria, disco y conexiones.
-- Rechazar tipos no permitidos; comprobar contenido contra el tipo esperado y decidir si se requiere escaneo antimalware antes de aceptar documentos reales.
+- Rechazar tipos no permitidos y comprobar contenido contra el tipo esperado. No hay análisis antimalware; no cargar documentos sensibles ni exponer el prototipo públicamente.
 - Servir descargas con autorización, tipo de contenido controlado y `Content-Disposition` seguro; no exponer rutas del host ni credenciales ni URLs internas.
 - No registrar contenido, nombres potencialmente sensibles, cookies, tokens ni rutas internas.
 - Definir qué ocurre con bytes/metadatos al eliminar una cuenta, una membresía o una organización.
@@ -97,28 +122,20 @@ Si el análisis antimalware o cuotas no se implementan, registrar su ausencia co
 
 La aplicación continúa siendo un prototipo educativo. Este hito por sí solo no constituye una aprobación para aceptar documentos sensibles ni exponer la carga públicamente.
 
-## Criterios de aceptación propuestos
+## Criterios de aceptación
 
-- [ ] Formatos, límites, permisos, estrategia de almacenamiento, retención y política de análisis documentados y aceptados antes de implementar.
-- [ ] Migración reversible añade solo metadatos necesarios; ninguna columna almacena el binario.
-- [ ] Carga valida el contenido con límites configurados y no deja filas/objetos parciales en los fallos previstos.
-- [ ] Los bytes se guardan en almacenamiento privado mediante clave opaca generada por servidor.
-- [ ] Listado, descarga y eliminación cumplen autorización de rol y aislamiento por organización en el backend.
-- [ ] El ciclo de fallo entre base de datos y almacenamiento tiene compensación o recuperación explícita y pruebas.
-- [ ] La UI permite completar el flujo acordado y comunica errores sin filtrar detalles internos.
-- [ ] Pruebas backend unitarias/de integración, pruebas de almacenamiento, pruebas frontend, Ruff, lint, typecheck y build pasan; [testing.md](testing.md) registra resultados observados.
-- [ ] README/arquitectura describen únicamente capacidades realmente implementadas; no se declara preparación para producción sin revisión de seguridad de cargas.
-
-## Preguntas que deben resolverse antes de implementar
-
-1. ¿Qué formatos se aceptan primero y cuál es el tamaño máximo por archivo?
-2. ¿Qué almacenamiento queremos para la primera versión: disco local privado solo para aprendizaje o un servicio de objetos compatible con S3? Si es un servicio concreto, ¿cuál?
-3. ¿Los roles `owner` y `member` pueden ambos cargar, listar, descargar y borrar, o se necesita una matriz distinta?
-4. ¿Al borrar un documento se elimina definitivamente o se conserva temporalmente? ¿Se necesita cuota por organización?
-5. ¿La primera versión debe incorporar análisis antimalware o solo restringir formatos y documentarlo como limitación local?
+- [x] Formatos, límites, permisos, estrategia de almacenamiento, retención y política de análisis documentados y aceptados antes de implementar.
+- [x] Migración reversible añade solo metadatos necesarios; ninguna columna almacena el binario.
+- [x] Carga valida el contenido con límites configurados y no deja filas/objetos parciales en los fallos previstos.
+- [x] Los bytes se guardan en almacenamiento privado mediante clave opaca generada por servidor.
+- [x] Listado, descarga y eliminación cumplen autorización de rol y aislamiento por organización en el backend.
+- [x] El ciclo de fallo entre base de datos y almacenamiento tiene compensación o recuperación explícita y pruebas.
+- [x] La UI permite completar el flujo acordado y comunica errores sin filtrar detalles internos.
+- [x] Pruebas backend unitarias/de integración, pruebas de almacenamiento, pruebas frontend, Ruff, lint, typecheck y build pasan; [testing.md](testing.md) registra resultados observados.
+- [x] README/arquitectura describen únicamente capacidades realmente implementadas; no se declara preparación para producción sin revisión de seguridad de cargas.
 
 ## Referencias
 
 - [ADR 0004: almacenamiento de documentos](adr/0004-document-storage.md)
 - [Arquitectura](architecture.md)
-- [Pruebas previstas](testing.md#hito-5--carga-y-gestion-de-documentos-pruebas-previstas)
+- [Resultados de pruebas](testing.md#hito-5--carga-y-gestion-de-documentos)

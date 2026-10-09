@@ -1,7 +1,11 @@
 alembic<2.0,>=1.14
 email-validator<3.0,>=2.2
 fastapi<1.0,>=0.115
+openai<3.0,>=1.50
+pgvector<1.0,>=0.3
 psycopg[binary]<4.0,>=3.2
+pypdf<7.0,>=5.1
+python-multipart<1.0,>=0.0.20
 pwdlib[argon2]<1.0,>=0.2.1
 python-dotenv<2.0,>=1.0
 sqlalchemy<3.0,>=2.0

@@ -1,11 +1,19 @@
 # Estrategia y registro de pruebas
 
+Este es el registro de referencia para los resultados observados. Los hitos pueden resumir sus criterios y enlazar aquí, pero una comprobación solo se considera ejecutada cuando hay un resultado registrado. Para saber qué estudiar primero, consulta la [guía de aprendizaje](guia-aprendizaje.md).
+
 ## Enfoque
 
 - Escribir pruebas junto a cada comportamiento nuevo relevante.
 - Probar resultados observables, límites y fallos previsibles.
 - Mantener datos ficticios; no usar documentos reales ni secretos.
 - No declarar una comprobación aprobada hasta ejecutarla o recibir un resultado verificable.
+
+## Hito 1 — base ejecutable
+
+- La hoja de ruta registra una API FastAPI con `/health`, PostgreSQL de desarrollo en Compose y pruebas automatizadas del endpoint.
+- El historial disponible no conserva el número de pruebas ni una ejecución de CI independiente de ese hito; no se atribuyen resultados posteriores a su commit inicial.
+- Las primeras comprobaciones de CI con resultados detallados en este registro aparecen en el Hito 3.
 
 ## Hito 2 — frontend: completado
 
@@ -61,18 +69,58 @@ Las pruebas de integración continúan usando solo `TEST_DATABASE_URL` apuntada 
 - `npm ci` informó 9 avisos de vulnerabilidad (1 moderado, 6 altos y 2 críticos) en el árbol de dependencias instalado; no se actualizaron dependencias frontend fuera del alcance del Hito 4.
 
 La verificación local del hito está completa; no se ha ejecutado una CI de GitHub para estos cambios. La falta de rate limiting distribuido, verificación de correo y recuperación de contraseña debe permanecer visible como limitación: el hito no implica que el login esté listo para producción.
-## Hito 5 — carga y gestión de documentos: pruebas previstas
 
-El plan de alcance y aprendizaje está en [hito-05.md](hito-05.md). No se ha implementado ni ejecutado todavía comportamiento de subida.
+## Hito 5 — carga y gestión de documentos
 
-Cuando se aprueben las decisiones de formatos y límites, almacenamiento, permisos y borrado, cubrir:
+El alcance aprobado está en [hito-05.md](hito-05.md) y la decisión de almacenamiento en [ADR 0004](adr/0004-document-storage.md).
 
-- Rechazo de archivo vacío, demasiado grande, extensión/tipo no permitido, contenido que no corresponde con el tipo declarado y nombre malformado; aceptación de cada formato permitido.
-- Tratamiento seguro de nombres Unicode, separadores, rutas relativas, nombres duplicados y caracteres de control; las claves físicas deben generarse en servidor.
-- Persistencia de metadatos y bytes, estado ante error de almacenamiento o escritura de base de datos, y borrado sin dejar contenido huérfano (o documentar explícitamente la recuperación/compensación).
-- Propietario y miembro según la matriz de permisos acordada; denegar lectura, descarga, modificación y borrado entre organizaciones, incluso alterando UUID o nombre de objeto.
-- Descarga autenticada y privada, encabezados seguros, errores que no revelan ruta física/URL interna y ausencia de bytes, datos personales o secretos en logs.
-- Pruebas de UI para carga, progreso si se implementa, éxito, validación, error recuperable, lista vacía y acciones no autorizadas.
-- Prueba real contra el backend de almacenamiento elegido además de dobles para fallos; mantener PostgreSQL aislado para metadatos e integridad.
+### Hito 5 — carga inicial: verificaciones locales y CI aprobadas
 
-No se reportarán resultados para estos casos hasta implementar las pruebas y ejecutarlas. Antimalware, cuotas y límites de tasa necesitan decisión explícita o una limitación visible antes de exponer la subida fuera de un entorno local de aprendizaje.
+Alcance acordado: PDF, DOCX y TXT, máximo 10 MiB por archivo, almacenamiento local privado, permisos iguales para `owner` y `member`, borrado físico, sin cuota total por organización ni análisis antimalware.
+
+- Frontend: `npm.cmd test` aprobó 19 pruebas; typecheck, lint y build aprobados durante el desarrollo del flujo inicial.
+- Backend: `pytest -q` aprobó 48 pruebas contra PostgreSQL desechable, incluidas autenticación, migración, validación de archivos, aislamiento por organización, límites y compensación de fallos de base de datos. Ruff y compilación Python aprobados.
+- Flujo funcional adicional contra SQLite temporal: registro, carga, listado, descarga con encabezados seguros y borrado físico pasaron. Esto comprueba el flujo HTTP, pero no sustituye las pruebas de integración ni la migración en PostgreSQL.
+- Migraciones PostgreSQL verificadas con ciclo `upgrade head` → `downgrade base` → `upgrade head`.
+- La primera ejecución encontró un archivo PDF aceptado con extensión TXT; se corrigió la validación y las 48 pruebas pasaron al repetir la suite completa.
+- GitHub Actions aprobada en el commit `27db9cca4265eff5f72c2a1bd783128482fd9bea`: [ejecución 37920779623](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37920779623). Los jobs `backend` (Ruff y pytest con PostgreSQL) y `frontend` (lint, typecheck, tests y build) finalizaron correctamente.
+
+La ejecución anterior del commit `8165e9a` falló porque aún aceptaba un PDF llamado `.txt`; la corrección y prueba de regresión están incluidas en `27db9cc`.
+
+## Hito 6 — extracción, ingesta y búsqueda textual
+
+### Alcance comprobado
+
+- `backend`: `pytest -q` aprobó 61 pruebas contra PostgreSQL desechable. Incluyen extracción PDF/DOCX/TXT, límites, conservación del archivo ante fallos, reintento y búsqueda aislada por organización.
+- Migración PostgreSQL verificada con `upgrade head` → `downgrade base` → `upgrade head`, incluida la columna generada y el índice GIN de búsqueda española.
+- `frontend`: 22 pruebas, lint, typecheck y build de producción aprobados.
+- Ruff aprobado. La suite emitió una advertencia deprecada de Starlette/httpx, sin fallos.
+- GitHub Actions aprobada para `73d073af8974a085d03cd860bbfdb01e5bef9707`: [ejecución 37934434186](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37934434186). Ambos jobs —backend con PostgreSQL y frontend— finalizaron correctamente.
+
+## Hito 7 — RAG, citas y evaluación local
+
+### Resultados locales y CI
+
+- `backend`: `pytest -q` aprobó 71 pruebas contra PostgreSQL desechable con pgvector. Se cubrieron aislamiento por organización, indexación, fallos del proveedor, citas, abstención y validación de respuestas.
+- Evaluación determinista: 2/2 consultas con evidencia recuperaron la fuente esperada; 2/2 respuestas incluyeron la cita esperada; 1/1 consulta sin evidencia se abstuvo. Vectores y respuestas sintéticos: no miden la calidad de OpenAI.
+- Una prueba comprueba que instrucciones adversariales del documento se envían como evidencia de usuario separada de las instrucciones del sistema. No demuestra inmunidad general frente a prompt injection.
+- Migraciones PostgreSQL/pgvector verificadas con `upgrade head` → `downgrade base` → `upgrade head`; Ruff aprobado.
+- `frontend`: 25 pruebas, lint, typecheck y build de producción aprobados.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales. La advertencia Starlette/httpx no afectó las pruebas.
+- GitHub Actions aprobada para `a2e43e1231217e02b40d23adb3ed58e0e04aaeaf`: [ejecución 37969999940](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37969999940). Los jobs de backend y frontend finalizaron correctamente.
+
+## Hito 8 — cuotas, telemetría privada y contenedores
+
+### Resultados locales observados
+
+- Backend: `pytest -q` aprobó 80 pruebas contra PostgreSQL desechable con pgvector; Ruff y `compileall` aprobaron. La ejecución local usó Python 3.14. Se mantiene una advertencia deprecada de Starlette/httpx, sin fallos.
+- Las pruebas cubren límites diarios y mensuales, periodos UTC, concurrencia, aislamiento entre organizaciones, fallos del proveedor y fallo cerrado si no se puede consultar la cuota. También comprueban que una carga sigue disponible cuando la cuota no puede reservarse y que ni métricas ni logs registran query string o identidad.
+- Migraciones PostgreSQL verificadas con `upgrade head` → `downgrade base` → `upgrade head`; la migración de Hito 8 se aplicó de nuevo al stack Compose.
+- Frontend: 25 pruebas, lint, typecheck y build de producción aprobados tras actualizar el texto de la portada para reflejar el RAG implementado.
+- Las imágenes de API y frontend se construyeron. El stack Compose quedó saludable; el frontend respondió HTTP 200 e indicó la API disponible, `/ready` y `/metrics` respondieron dentro de la red privada y solo `127.0.0.1:3000` se publicó en el host. La configuración no publica puertos para API ni PostgreSQL.
+- Una cuenta sintética pudo iniciar sesión después de reiniciar PostgreSQL, confirmando persistencia básica del volumen. Los logs observados fueron eventos JSON sin query string, email ni contraseña; las métricas fueron consultables dentro del contenedor API.
+- `iniciar.ps1` pasó comprobación de sintaxis y pruebas simuladas con Docker para `.env` ausente, copiado del ejemplo y con contraseña propia: genera una contraseña cuando hace falta, conserva la existente y ejecuta migraciones y Compose bajo un nombre de proyecto aislado. La configuración Compose pasó `config --quiet`; la simulación no sustituyó la comprobación del stack real descrita arriba.
+- No se configuró una clave de OpenAI ni se hicieron solicitudes reales.
+- GitHub Actions aprobada para el commit `0ec58cc615b8903f3b4bfa6f5c941026aaa21709`: [ejecución 37980325026](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/37980325026). Los jobs `backend` (Ruff y pytest con PostgreSQL/pgvector) y `frontend` (lint, typecheck, tests y build) finalizaron correctamente.
+
+El commit posterior `f482dee` solo actualizó el estado documental después de observar esa ejecución; no volvió a modificar el código cubierto por CI.

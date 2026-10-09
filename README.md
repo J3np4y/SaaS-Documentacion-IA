@@ -1,68 +1,44 @@
-# SaaS de documentación empresarial con IA
+<div align="center">
+  <img src="frontend/public/brand/nexora-light.png" alt="Nexora" width="180" />
+  <h1>El conocimiento de tu equipo, conectado.</h1>
+  <p>Documentos organizados. Respuestas con fuentes. Un proyecto para aprender cómo se construye una aplicación real.</p>
+</div>
 
-Aplicación web para que equipos colaboren alrededor de su documentación y, en una siguiente etapa, puedan encontrar información y obtener respuestas fundamentadas en sus fuentes.
+<div align="center">
+  <img src="docs/screenshots/nexora-light.png" alt="Nexora en modo claro" width="49%" />
+  <img src="docs/screenshots/nexora-dark.png" alt="Nexora en modo oscuro" width="49%" />
+</div>
 
-Este repositorio es también un **proyecto de aprendizaje guiado**: cada parte se construye entendiendo primero el problema, los conceptos y las decisiones de diseño. La meta no es producir código a ciegas, sino aprender cómo las piezas de una aplicación real se relacionan y cómo tomar decisiones técnicas con criterio.
+## Conoce Nexora
 
-> **Estado actual:** la aplicación incluye cuentas, organizaciones, invitaciones y permisos básicos. La ingesta y consulta de documentos y las respuestas generadas por IA todavía no están implementadas. Es un prototipo educativo, no un servicio listo para producción.
+Nexora reúne la documentación de un equipo en un espacio privado. Permite encontrar contenido, hacer preguntas en lenguaje natural y consultar respuestas vinculadas a los documentos que les dan contexto.
 
-## Cómo funciona
+La aplicación incluye inicio de sesión y organizaciones, invitaciones de un solo uso, permisos por rol, carga y búsqueda de documentos, extracción de texto y recuperación aumentada con generación (RAG) con citas. La identidad visual incorpora temas claro y oscuro y recuerda la preferencia elegida.
 
-1. Una persona crea una cuenta y una organización, o se incorpora a una organización mediante una invitación.
-2. Inicia sesión y usa la aplicación dentro de su organización. Los permisos determinan qué acciones puede realizar cada integrante.
-3. El backend valida la identidad, los permisos y la organización de cada solicitud; el frontend presenta el flujo y sus estados.
-4. La base técnica está preparada para evolucionar hacia la gestión de documentos y, más adelante, búsqueda y respuestas de IA vinculadas a fuentes.
+## Aprende construyendo
 
-## Aprendizaje guiado
+Este repositorio es un **proyecto educativo de aprendizaje guiado**. Presenta los conceptos y las decisiones detrás de cada funcionalidad para que una persona que empieza pueda avanzar paso a paso: desde autenticación y permisos hasta almacenamiento de documentos y RAG. El objetivo es entender cómo se conectan las piezas y por qué se construyen así, no solo copiar código.
 
-El recorrido explica los conceptos antes de implementarlos: identidad y autenticación, autorización, organizaciones y pertenencia, persistencia y migraciones, y separación entre interfaz y API. Cada funcionalidad se acompaña de decisiones razonadas y comprobaciones para entender tanto el camino correcto como los límites y fallos previsibles.
+- [Guía de aprendizaje](docs/guia-aprendizaje.md): cómo recorrer el proyecto desde cero.
+- [Roadmap](docs/roadmap.md): fases y evolución del producto.
+- [Pruebas](docs/testing.md): alcance de las comprobaciones del proyecto.
+- [Decisiones de diseño](docs/adr/): motivos y alternativas de arquitectura.
 
-## Stack
+## Cómo está construida
 
-- **Frontend:** Next.js, React, TypeScript y CSS.
-- **Backend:** Python 3.12+ y FastAPI.
-- **Datos:** PostgreSQL 16, SQLAlchemy y Alembic.
-- **Acceso:** contraseñas protegidas con Argon2id, sesiones revocables y permisos por organización.
-- **Desarrollo local:** Docker Compose.
+| Área | Tecnologías |
+| --- | --- |
+| Interfaz | Next.js, React, TypeScript y CSS |
+| API | Python y FastAPI |
+| Datos | PostgreSQL, SQLAlchemy y Alembic |
+| Conocimiento | Extracción de documentos, búsqueda y RAG con citas |
 
-## Estructura
+## Límites del prototipo
 
-```text
-backend/    API, acceso a datos y reglas de la aplicación
-frontend/   interfaz web
-docs/       explicación del diseño y material de aprendizaje
-```
+Nexora sirve para aprender y experimentar; **no es un servicio listo para producción**. La autenticación no verifica el correo ni ofrece recuperación de cuenta. No uses documentos personales, confidenciales o de producción. Al habilitar OpenAI, el texto indexado, las preguntas y los fragmentos relevantes se envían al proveedor y pueden generar costes.
 
-## Ejecutar localmente
+---
 
-Necesitas Docker Compose, Python 3.12 o posterior y Node.js con npm. En una copia nueva, crea `.env` a partir de `.env.example` y cambia la contraseña local de PostgreSQL; luego inicia la base de datos:
-
-```powershell
-Copy-Item .env.example .env
-docker compose up -d db
-```
-
-En una terminal, instala e inicia la API:
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m alembic upgrade head
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-En otra terminal, inicia la interfaz:
-
-```powershell
-cd frontend
-Copy-Item .env.example .env.local
-npm.cmd ci
-npm.cmd run dev
-```
-
-Abre `http://localhost:3000`. La API está disponible en `http://localhost:8000` y su interfaz interactiva en `http://localhost:8000/docs`.
-
-## Uso responsable
-
-La autenticación actual es didáctica: no incluye verificación de correo, recuperación de cuenta ni protección distribuida frente a intentos abusivos. No expongas esta versión a Internet ni la uses para datos reales. Antes de una puesta en producción habría que completar esos controles y revisar la configuración del despliegue.
+<div align="center">
+  Hecho para aprender, diseñado para explorar.
+</div>

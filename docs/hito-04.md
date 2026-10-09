@@ -2,11 +2,23 @@
 
 ## Estado: completado; verificación local aprobada
 
-El Hito 3 está confirmado por CI: [ejecución 36760916434](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/36760916434), ambos jobs correctos sobre `main` (`c5ebb8b`, 30 de septiembre de 2026). El alcance de este hito se ha acordado antes de implementar autenticación.
+La verificación de este hito está resumida en [testing.md](testing.md). El Hito 3 está confirmado por CI: [ejecución 36760916434](https://github.com/J3np4y/SaaS-Documentacion-IA/actions/runs/36760916434), ambos jobs correctos sobre `main` (`c5ebb8b`, 30 de septiembre de 2026). El alcance de este hito se acordó antes de implementar autenticación.
 
 ## Objetivo de aprendizaje
 
 Construir un flujo pequeño, completo y explicable para demostrar quién usa la aplicación, cómo inicia sesión y qué puede hacer dentro de una organización. La interfaz ayuda a recorrerlo; el backend es la autoridad para permisos y aislamiento de datos.
+
+## Recorrido recomendado para empezar
+
+No intentes aprender todos los conceptos de autenticación a la vez. Sigue este orden y usa las secciones detalladas de abajo como referencia cuando llegues a cada tema:
+
+1. **Quién es quién:** distingue usuario, organización y pertenencia. Primero entiende qué dato relaciona a una persona con un grupo.
+2. **Entrar y salir:** aprende qué comprueba el login y qué significa mantener una sesión. Una cookie es un dato que el navegador envía en solicitudes; la contraseña no debe guardarse como texto legible.
+3. **Qué se permite:** diferencia autenticación (“¿quién eres?”) de autorización (“¿puedes hacer esto?”). Comprueba una regla sencilla para `owner` y otra para `member`.
+4. **Compartir acceso:** entiende que una invitación funciona como una llave temporal y de un solo uso; estudia vencimiento y consumo antes de mirar los detalles de implementación.
+5. **Recorrer la aplicación:** prueba el flujo desde la interfaz y confirma que el backend aplica las mismas reglas, aunque alguien cambie los datos enviados desde el navegador.
+
+Al terminar cada fase, explica la regla con tus palabras y ejecuta las pruebas asociadas. Si quieres revisar la justificación de las decisiones, consulta [ADR 0003](adr/0003-authentication-and-access.md). Los términos técnicos, rutas y casos límite que siguen son una referencia completa; no hace falta memorizarlos para empezar.
 
 ## Decisiones de producto y alcance
 

@@ -3,6 +3,10 @@
 - Estado: aceptada
 - Fecha: 2026-10-07
 
+## Resumen sencillo
+
+El servidor comprueba la identidad y los permisos; la interfaz no puede concederlos por sí sola. La contraseña se guarda como una huella difícil de revertir, y la sesión puede revocarse desde el servidor. En esta primera versión se eligió un flujo propio y acotado para aprender estos conceptos sin depender de un proveedor externo. Las limitaciones de seguridad y producción siguen vigentes aunque el flujo funcione.
+
 ## Contexto
 
 El Hito 3 dejó persistencia para organizaciones, pero no usuarios ni permisos. La aplicación necesita un primer flujo seguro y comprensible que prepare el aislamiento multi-tenant sin introducir proveedor de identidad o correo externo.

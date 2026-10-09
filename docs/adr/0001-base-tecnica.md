@@ -3,6 +3,10 @@
 - Estado: aceptada para el primer hito
 - Fecha: 2026-09-26
 
+## Resumen sencillo
+
+Para comenzar el proyecto se eligieron herramientas distintas para la interfaz web, la API, los datos y el entorno local. El objetivo es tener una base reproducible y poder añadir capacidades poco a poco, sin depender de servicios externos desde el principio. La selección fija un punto de partida; no significa que haya que aprender todas las herramientas antes de hacer el primer cambio.
+
 ## Contexto
 
 El proyecto debe demostrar ingeniería de producto y permitir añadir IA gradualmente, con un arranque local reproducible.

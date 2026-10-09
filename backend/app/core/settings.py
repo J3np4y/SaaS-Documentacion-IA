@@ -15,6 +15,35 @@ SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() in {
     "true",
     "yes",
 }
+DOCUMENT_STORAGE_DIR = Path(
+    os.getenv(
+        "DOCUMENT_STORAGE_DIR",
+        str(Path(__file__).resolve().parents[3] / ".data" / "documents"),
+    )
+).expanduser()
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
+
+
+def _positive_int(name: str, default: int) -> int:
+    value = os.getenv(name, str(default))
+    try:
+        parsed = int(value)
+    except ValueError:
+        raise RuntimeError(f"{name} debe ser un entero positivo") from None
+    if parsed < 1:
+        raise RuntimeError(f"{name} debe ser un entero positivo")
+    return parsed
+
+
+RAG_EMBEDDING_DIMENSIONS = 1536
+RAG_MAX_QUERY_CHARS = 1000
+RAG_MAX_CONTEXT_CHUNKS = 5
+RAG_MIN_SIMILARITY = 0.45
+RAG_MAX_COMPLETION_TOKENS = 500
+RAG_DAILY_OPERATION_LIMIT = _positive_int("RAG_DAILY_OPERATION_LIMIT", 20)
+RAG_MONTHLY_OPERATION_LIMIT = _positive_int("RAG_MONTHLY_OPERATION_LIMIT", 200)
+RAG_MAX_INDEX_CHUNKS = 150
 
 
 def _postgres_url(database: str, port: int) -> str | None:
@@ -26,8 +55,8 @@ def _postgres_url(database: str, port: int) -> str | None:
         "postgresql+psycopg",
         username=os.getenv("POSTGRES_USER", "docs_assistant"),
         password=password,
-        host="127.0.0.1",
-        port=port,
+        host=os.getenv("POSTGRES_HOST", "127.0.0.1"),
+        port=int(os.getenv("POSTGRES_PORT", str(port))),
         database=database,
     ).render_as_string(hide_password=False)
 

@@ -1,7 +1,11 @@
 # ADR 0004: almacenamiento y carga de documentos
 
-- Estado: propuesta; requiere decisiones de producto antes de implementar
-- Fecha: 2026-10-07
+- Estado: aceptada para el Hito 5
+- Fecha: 2026-10-09
+
+## Resumen sencillo
+
+La primera versión acepta PDF, DOCX y TXT de hasta 10 MiB por archivo. Guarda los bytes en un directorio local privado configurable y sus datos descriptivos en PostgreSQL. Cualquier integrante autenticado puede gestionar documentos de su organización. El borrado es definitivo; no habrá cuotas ni análisis antimalware en este hito.
 
 ## Contexto
 
@@ -9,7 +13,7 @@ El esquema actual contiene metadatos de `Document` ligados a una organización, 
 
 Un archivo es entrada no confiable y puede consumir almacenamiento, memoria y conexiones. Además, una escritura a PostgreSQL y otra a almacenamiento no comparten necesariamente una única transacción. El diseño debe incluir autorización por tenant, límites, errores parciales y limpieza.
 
-## Invariantes propuestas
+## Invariantes
 
 - Guardar metadatos en PostgreSQL y mantener bytes fuera de las tablas de negocio.
 - Mantener el almacenamiento privado; solo el backend autorizado accede a los bytes.
@@ -19,19 +23,17 @@ Un archivo es entrada no confiable y puede consumir almacenamiento, memoria y co
 - No exponer rutas internas, URLs públicas duraderas ni secretos en respuestas/logs.
 - Diseñar pruebas de fallo y compensación para coordinar persistencia relacional y binaria.
 
-Estas invariantes son una propuesta de diseño basada en la arquitectura existente, no una aprobación para aceptar archivos hasta fijar los límites y controles.
+Estas reglas delimitan el prototipo educativo local; no son una aprobación para producción ni para procesar documentos sensibles.
 
-## Decisiones pendientes
+## Decisiones
 
-- Formatos permitidos inicialmente y método de detección/verificación.
-- Tamaño máximo por archivo, archivos por petición y cuotas de almacenamiento.
-- Implementación inicial: directorio local privado, almacenamiento compatible con S3 u otra opción; entorno objetivo.
-- Permisos de `owner` y `member` para cargar, listar, descargar y eliminar.
-- Borrado físico o lógico, retención, recuperación y comportamiento al retirar usuarios/organizaciones.
-- Análisis antimalware: integrado, provisto por el entorno o diferido con limitación explícita.
+- Formatos iniciales: PDF, DOCX y TXT; validar extensión y estructura/contenido, no confiar en el MIME del navegador.
+- Límite: 10 MiB por archivo y una carga por solicitud; el cuerpo multipart puede añadir como máximo 64 KiB para sus cabeceras.
+- Almacenamiento inicial: directorio local privado configurable con `DOCUMENT_STORAGE_DIR`; no se incorpora proveedor cloud ni adaptador multiproveedor.
+- Permisos: `owner` y `member` pueden cargar, listar, descargar y borrar dentro de su organización.
+- Borrado físico definitivo; no hay recuperación ni cuotas totales por organización en este hito.
+- Sin análisis antimalware. No aceptar documentos sensibles ni desplegar públicamente esta versión.
 - Política de descargas y encabezados para tipos activos; no servir HTML/HTML embebido del usuario desde el mismo origen de la aplicación.
-
-La persona responsable debe cerrar estas decisiones en `docs/hito-05.md` antes de cambiar el estado de esta ADR a aceptada.
 
 ## Alternativas a evaluar
 
@@ -40,10 +42,10 @@ La persona responsable debe cerrar estas decisiones en `docs/hito-05.md` antes d
 - **Binarios en PostgreSQL:** descartado para el alcance actual; contradice el límite arquitectónico existente y mezcla grandes objetos con metadatos/transacciones de aplicación.
 - **URL pública permanente:** descartada como valor por defecto por el riesgo de exposición y falta de autorización por tenant.
 
-No se selecciona aún proveedor ni se añade una dependencia. La interfaz de almacenamiento debe ser la mínima que el caso de uso aprobado requiera; no abstraer por anticipado múltiples proveedores.
+No se selecciona un proveedor cloud ni se añade una dependencia. El directorio local privado es suficiente para el alcance educativo acordado.
 
 ## Consecuencias y aprendizaje
 
-Antes de implementar, actualizar esta ADR con decisión y consecuencias, y completar las preguntas de `hito-05.md`. Durante el hito, explicar cómo cada control reduce una amenaza y demostrarlo con pruebas de tamaño, tipo, acceso entre tenants, fallos de escritura, descarga y borrado.
+Durante el hito, explicar cómo cada control reduce una amenaza y demostrarlo con pruebas de tamaño, tipo, acceso entre tenants, fallos de escritura, descarga y borrado.
 
 La aceptación de esta ADR no implicará que la subida de archivos sea segura para producción: despliegue, copias de seguridad, cuotas, análisis de malware, retención y respuesta a incidentes requerirán evaluación propia.

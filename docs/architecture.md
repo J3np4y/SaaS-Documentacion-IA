@@ -1,8 +1,10 @@
 # Arquitectura
 
-## Estado actual — persistencia y acceso básico
+Esta página muestra las piezas y cómo se comunican; no es necesario aprender todos los detalles de una vez. Para estudiar el proyecto por etapas, consulta la [guía de aprendizaje](guia-aprendizaje.md). Las secciones indican si describen capacidades actuales o trabajo planificado.
 
-FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para autenticación. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones y metadatos iniciales de documentos.
+## Estado actual — persistencia, acceso y gestión de documentos
+
+FastAPI expone `/health` y `/ready`; SQLAlchemy obtiene una sesión por petición y Alembic versiona el esquema. Next.js presenta el flujo y usa un proxy same-origin para las rutas de autenticación y documentos. PostgreSQL conserva organizaciones, usuarios, membresías, sesiones, invitaciones, metadatos y texto extraído con un índice de búsqueda en español; los bytes se guardan en un directorio privado configurado por `DOCUMENT_STORAGE_DIR`.
 
 ```text
 Navegador -> Next.js (página renderizada en servidor) -> FastAPI /health
@@ -23,7 +25,7 @@ Alembic -> migraciones versionadas de esquema
 
 FastAPI conserva `/health` como comprobación de vida independiente de la base de datos y expone `/ready` como comprobación de preparación que verifica una conexión real a PostgreSQL. Si la base de datos no está disponible, `/ready` responderá con estado no disponible sin revelar detalles de conexión.
 
-El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. La gestión y subida de documentos se planifican para el Hito 5.
+El esquema inicial añadió `Organization` y metadatos `Document` enlazados mediante clave foránea. Los binarios no se guardan en PostgreSQL. El Hito 5 añadió la gestión de documentos con bytes en un directorio local privado.
 
 ## Acceso y permisos (Hito 4)
 
@@ -39,7 +41,7 @@ Registro con email/contraseña crea una organización y a su primer usuario como
 
 Las rutas proxy de Next.js reenvían cookies al backend sin exponerlas a JavaScript. La sesión vive en PostgreSQL para revocarla; el navegador solo conserva un identificador aleatorio `HttpOnly`, `SameSite=Lax`, con vencimiento y `Secure` en despliegues HTTPS. El backend valida el encabezado `Origin` en operaciones que cambian estado. Las invitaciones se comparten manualmente y no verifican la dirección de correo.
 
-## Gestión de documentos (Hito 5 planificado)
+## Gestión de documentos (Hito 5 completado)
 
 ```text
 Navegador -> Next.js -> FastAPI
@@ -49,7 +51,21 @@ Navegador -> Next.js -> FastAPI
                          -> almacenamiento privado: bytes originales
 ```
 
-El principio ya establecido es no guardar binarios en PostgreSQL. El backend asignará la organización desde la sesión, no desde campos confiados al navegador; las claves de almacenamiento serán generadas por el servidor y no derivadas de rutas/nombres proporcionados por el usuario. La ubicación de almacenamiento concreta, formatos, límites y política de acceso/retención siguen pendientes de acuerdo. No se expondrán enlaces públicos por defecto. El plan y sus decisiones abiertas están en [hito-05.md](hito-05.md) y [ADR 0004](adr/0004-document-storage.md).
+El backend asigna la organización desde la sesión, no desde campos confiados al navegador; las claves de almacenamiento las genera el servidor y no se derivan de rutas/nombres proporcionados por el usuario. Los formatos, límites, permisos y política de retención del prototipo están acordados en [hito-05.md](hito-05.md) y [ADR 0004](adr/0004-document-storage.md). No se exponen enlaces públicos por defecto.
+
+## Extracción e ingesta (Hito 6 implementado)
+
+El backend extrae texto de PDF con `pypdf`, de DOCX con las bibliotecas estándar y de TXT como UTF-8. El texto se guarda en PostgreSQL junto a su estado; una columna generada y un índice GIN permiten búsqueda de texto completo con la configuración española. Las consultas se limitan a la organización de la sesión. El procesamiento es síncrono y acotado; si falla, se conserva el original y se puede reintentar. OCR y embeddings quedan fuera del Hito 6. El recorrido y las limitaciones están en [hito-06.md](hito-06.md).
+
+## RAG, citas y evaluación (Hito 7 completado; CI aprobada)
+
+La aplicación usa la API de OpenAI para embeddings y generación, y PostgreSQL con pgvector para recuperar fragmentos de la organización autenticada. El texto del documento, la pregunta y el contexto se envían a OpenAI cuando el proveedor está configurado. Los documentos antiguos requieren indexación explícita; los nuevos se indexan durante la carga solo con una clave configurada. Las decisiones de modelos, fragmentación, citas, límites y privacidad están en [ADR 0005](adr/0005-rag-models-and-retrieval.md) y [hito-07.md](hito-07.md). La evaluación local usa vectores y respuestas sintéticos y no sustituye una medición de calidad del modelo real.
+
+## Operación y contenedores (Hito 8 completado; CI aprobada)
+
+La aplicación limita operaciones RAG por organización mediante contadores diarios y mensuales UTC en PostgreSQL. Las reservas se hacen con una operación atómica antes de contactar con OpenAI; se contabilizan los fallos. La API expone métricas generales de peticiones y latencia, y emite logs técnicos resumidos sin cuerpos ni identidad. Las métricas son agregados en memoria, no un almacén histórico compartido.
+
+La configuración de contenedores separa frontend, API y PostgreSQL, mantiene la base de datos y los documentos en volúmenes y deja la API en la red interna; solo el frontend se publica y queda ligado a loopback por defecto. La guía permite probar el stack y hacer una copia manual de PostgreSQL, pero no despliega la aplicación ni aporta por sí sola TLS, backups verificados, escalado ni todos los controles de producción. Véase [Hito 8](hito-08.md) y [ADR 0006](adr/0006-observability-cost-control-and-containers.md).
 
 ## Dirección objetivo
 
@@ -59,19 +75,18 @@ Navegador -> Next.js / TypeScript -> FastAPI
                                       -> PostgreSQL (organizaciones y metadatos)
                                       -> almacenamiento de objetos (ficheros originales)
                                       -> pgvector (fragmentos y embeddings, hito RAG)
-                                      -> proveedor LLM (tras decisión documentada)
+                                      -> proveedor LLM (OpenAI, según ADR 0005)
 ```
 
 ## Límites de diseño y seguridad
 
 - El backend será autoridad para identidad, permisos y acceso a datos.
 - El aislamiento por organización se aplicará en las consultas de negocio y se cubrirá con pruebas.
-- El backend es la autoridad para autenticar usuarios, comprobar roles y aislar datos por organización.
 - Contraseñas y secretos de sesión/invitación se almacenan como hashes; los tokens no se registran ni se devuelven después de su emisión.
 - Los binarios no se guardarán en tablas de negocio.
 - Los archivos cargados se tratarán como datos no confiables: validar límites y contenido antes de aceptar, no confiar en nombre/extensión/MIME declarados, y nunca ejecutar ni interpretar archivos como instrucciones.
 - El almacenamiento de documentos será privado y aislado por organización; acceso y borrado deberán autorizarse en el servidor.
 - Secretos y URL de base de datos solo se leerán del entorno; no se registrarán en logs.
 - Las consultas usarán parámetros/ORM, y los metadatos se validarán antes de persistir.
-- No se integra proveedor LLM; extracción, indexación y RAG quedan fuera del Hito 5.
+- Las solicitudes RAG envían documentos indexados, preguntas y contexto recuperado a OpenAI; no se deben usar datos sensibles sin aprobación explícita.
 - Hito 4 no incorpora correo, verificación de email, recuperación de contraseña, MFA ni rate limiting distribuido; no considerar el login abierto listo para producción.
